@@ -538,6 +538,13 @@
 				allwinner,drive = <3>;
 				allwinner,pull = <0>;
 			};
+
+			spi2_pins_a: spi2@0 {
+				allwinner,pins = "PH9", "PH10", "PH11", "PH12";
+				allwinner,function = "spi2";
+				allwinner,drive = <0>;
+				allwinner,pull = <0>;
+			};
 		};
 
 		ahb1_rst: reset@01c202c0 {

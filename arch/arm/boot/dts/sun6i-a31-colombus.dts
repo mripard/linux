@@ -20,7 +20,11 @@
 	compatible = "wits,colombus", "allwinner,sun6i-a31";
 
 	chosen {
-		bootargs = "earlyprintk console=ttyS0,115200";
+		bootargs = "earlyprintk console=ttyS0,115200 ignore_loglevel";
+	};
+
+	aliases {
+		spi0 = &spi2;
 	};
 
 	soc@01c00000 {
@@ -85,6 +89,20 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&i2c2_pins_a>;
 			status = "okay";
+		};
+
+		spi2: spi@01c6a000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&spi2_pins_a>;
+			status = "okay";
+
+			spidev@0 {
+				compatible = "onsemi,cat25128";
+				reg = <0>;
+				spi-max-frequency = <4000000>;
+			};
 		};
 	};
 
