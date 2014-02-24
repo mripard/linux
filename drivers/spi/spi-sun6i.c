@@ -147,6 +147,13 @@ static inline void sun6i_spi_fill_fifo(struct sun6i_spi *sspi, int len)
 	}
 }
 
+static bool sun6i_spi_can_dma(struct spi_master *master,
+			      struct spi_device *spi,
+			      struct spi_transfer *tfr)
+{
+	return tfr->len > SUN6I_FIFO_DEPTH;
+}
+
 static void sun6i_spi_set_cs(struct spi_device *spi, bool enable)
 {
 	struct sun6i_spi *sspi = spi_master_get_devdata(spi->master);
@@ -164,6 +171,16 @@ static void sun6i_spi_set_cs(struct spi_device *spi, bool enable)
 	sun6i_spi_write(sspi, SUN6I_TFR_CTL_REG, reg);
 }
 
+static int sun6i_spi_prepare_message(struct spi_master *master,
+				     struct spi_message *msg)
+{
+	struct sun6i_spi *sspi = spi_master_get_devdata(master);
+
+	master->dma_rx = sspi->rx_dma_chan;
+	master->dma_tx = sspi->tx_dma_chan;
+
+	return 0;
+}
 
 static int sun6i_spi_transfer_one(struct spi_master *master,
 				  struct spi_device *spi,
@@ -173,7 +190,6 @@ static int sun6i_spi_transfer_one(struct spi_master *master,
 	struct dma_async_tx_descriptor *desc_tx, *desc_rx;
 	unsigned int mclk_rate, div, timeout;
 	unsigned int tx_len = 0;
-	struct scatterlist sg_tx, sg_rx;
 	int ret = 0;
 	u32 reg;
 
@@ -272,43 +288,45 @@ static int sun6i_spi_transfer_one(struct spi_master *master,
 	sun6i_spi_write(sspi, SUN6I_BURST_CTL_CNT_REG,
 			SUN6I_BURST_CTL_CNT_STC(tx_len));
 
-
-	dev_dbg(&sspi->master->dev, "tfr->tx_buf = %p, t->len = %d \n", tfr->rx_buf, tfr->len);
-	sg_init_table(&sg_tx, 1);
-	sg_set_buf(&sg_tx, (void*)tfr->tx_buf, tfr->len);
-	sg_dma_len(&sg_tx) = tfr->len;
-	dma_map_sg(&sspi->master->dev, &sg_tx, 1, DMA_TO_DEVICE);
-
-	dev_dbg(&sspi->master->dev, "tfr->rx_buf = %p, t->len = %d \n", tfr->tx_buf, tfr->len);
-	sg_init_table(&sg_rx, 1);
-	sg_set_buf(&sg_rx, (void*)tfr->rx_buf, tfr->len);
-	sg_dma_len(&sg_tx) = tfr->len;
-	dma_map_sg(&sspi->master->dev, &sg_rx, 1, DMA_FROM_DEVICE);
-
-	desc_tx = dmaengine_prep_slave_sg(sspi->tx_dma_chan, &sg_tx, 1, DMA_TO_DEVICE, DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
-	if (!desc_tx) {
-		dev_err(&sspi->master->dev, "Couldn't prepare dma slave\n");
-		return -EIO;
-	}
-
-	desc_rx = dmaengine_prep_slave_sg(sspi->rx_dma_chan, &sg_rx, 1, DMA_FROM_DEVICE, DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
-	if (!desc_rx) {
-		dev_err(&sspi->master->dev, "Couldn't prepare dma slave\n");
-		return -EIO;
-	}
-
 	/* Enable the interrupts */
 	sun6i_spi_write(sspi, SUN6I_INT_CTL_REG, SUN6I_INT_CTL_TC);
 
-	/* Enable DMA requests */
-	reg = sun6i_spi_read(sspi, SUN6I_FIFO_CTL_REG);
-	sun6i_spi_write(sspi, SUN6I_FIFO_CTL_REG, reg | SUN6I_FIFO_CTL_TF_DRQ_EN | SUN6I_FIFO_CTL_RF_DRQ_EN);
+	if (sun6i_spi_can_dma(master, spi, tfr)) {
+		reg = sun6i_spi_read(sspi, SUN6I_FIFO_CTL_REG);
 
-	dmaengine_submit(desc_tx);
-	dma_async_issue_pending(sspi->tx_dma_chan);
+		if (sspi->tx_buf) {
+			desc_tx = dmaengine_prep_slave_sg(sspi->tx_dma_chan,
+							  tfr->tx_sg.sgl, tfr->tx_sg.nents,
+							  DMA_TO_DEVICE, DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
+			if (!desc_tx) {
+				dev_err(&sspi->master->dev, "Couldn't prepare dma slave\n");
+				return -EIO;
+			}
 
-	dmaengine_submit(desc_rx);
-	dma_async_issue_pending(sspi->rx_dma_chan);
+			reg |= SUN6I_FIFO_CTL_TF_DRQ_EN;
+
+			dmaengine_submit(desc_tx);
+			dma_async_issue_pending(sspi->tx_dma_chan);
+		}
+
+		if (sspi->rx_buf) {
+			desc_rx = dmaengine_prep_slave_sg(sspi->rx_dma_chan,
+							  tfr->rx_sg.sgl, tfr->tx_sg.nents, DMA_FROM_DEVICE,
+							  DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
+			if (!desc_rx) {
+				dev_err(&sspi->master->dev, "Couldn't prepare dma slave\n");
+				return -EIO;
+			}
+
+			reg |= SUN6I_FIFO_CTL_RF_DRQ_EN;
+
+			dmaengine_submit(desc_rx);
+			dma_async_issue_pending(sspi->rx_dma_chan);
+		}
+
+		/* Enable DMA requests */
+		sun6i_spi_write(sspi, SUN6I_FIFO_CTL_REG, reg);
+	}
 
 	/* Start the transfer */
 	reg = sun6i_spi_read(sspi, SUN6I_TFR_CTL_REG);
@@ -431,6 +449,8 @@ static int sun6i_spi_probe(struct platform_device *pdev)
 
 	init_completion(&sspi->done);
 	sspi->master = master;
+	master->can_dma = sun6i_spi_can_dma;
+	master->prepare_message = sun6i_spi_prepare_message;
 	master->set_cs = sun6i_spi_set_cs;
 	master->transfer_one = sun6i_spi_transfer_one;
 	master->num_chipselect = 4;
