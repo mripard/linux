@@ -27,8 +27,6 @@
 
 #define SUN6I_FIFO_DEPTH		128
 
-#define SUN6I_VER_REG			0x00
-
 #define SUN6I_GBL_CTL_REG		0x04
 #define SUN6I_GBL_CTL_BUS_ENABLE		BIT(0)
 #define SUN6I_GBL_CTL_MASTER			BIT(1)
@@ -64,8 +62,6 @@
 #define SUN6I_FIFO_STA_RF_CNT_BITS		0
 #define SUN6I_FIFO_STA_TF_CNT_MASK		0x7f
 #define SUN6I_FIFO_STA_TF_CNT_BITS		16
-
-#define SUN6I_WCR_REG			0x20
 
 #define SUN6I_CLK_CTL_REG		0x24
 #define SUN6I_CLK_CTL_CDR2_MASK			0xff
@@ -311,7 +307,7 @@ static int sun6i_spi_transfer_one(struct spi_master *master,
 
 		if (sspi->rx_buf) {
 			desc_rx = dmaengine_prep_slave_sg(sspi->rx_dma_chan,
-							  tfr->rx_sg.sgl, tfr->tx_sg.nents, DMA_FROM_DEVICE,
+							  tfr->rx_sg.sgl, tfr->rx_sg.nents, DMA_FROM_DEVICE,
 							  DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
 			if (!desc_rx) {
 				dev_err(&sspi->master->dev, "Couldn't prepare dma slave\n");
@@ -326,6 +322,9 @@ static int sun6i_spi_transfer_one(struct spi_master *master,
 
 		/* Enable DMA requests */
 		sun6i_spi_write(sspi, SUN6I_FIFO_CTL_REG, reg);
+	} else {
+		/* Fill the TX FIFO */
+		sun6i_spi_fill_fifo(sspi, SUN6I_FIFO_DEPTH);
 	}
 
 	/* Start the transfer */
@@ -338,6 +337,9 @@ static int sun6i_spi_transfer_one(struct spi_master *master,
 		ret = -ETIMEDOUT;
 		goto out;
 	}
+
+	if (sspi->rx_buf && sun6i_spi_can_dma(master, spi, tfr))
+		sun6i_spi_drain_fifo(sspi, SUN6I_FIFO_DEPTH);
 
 out:
 	sun6i_spi_write(sspi, SUN6I_INT_CTL_REG, 0);
