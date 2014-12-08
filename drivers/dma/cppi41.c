@@ -1088,6 +1088,7 @@ static struct platform_driver cpp41_dma_driver = {
 	.remove = cppi41_dma_remove,
 	.driver = {
 		.name = "cppi41-dma-engine",
+		.owner = THIS_MODULE,
 		.pm = &cppi41_pm_ops,
 		.of_match_table = of_match_ptr(cppi41_dma_ids),
 	},

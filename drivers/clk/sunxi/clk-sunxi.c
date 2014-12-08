@@ -507,8 +507,6 @@ static const struct factors_data sun6i_a31_pll6_data __initconst = {
 };
 
 static const struct factors_data sun4i_apb1_data __initconst = {
-	.mux = 24,
-	.muxmask = BIT(1) | BIT(0),
 	.table = &sun4i_apb1_config,
 	.getter = sun4i_get_apb1_factors,
 };
@@ -545,6 +543,10 @@ static const struct mux_data sun4i_cpu_mux_data __initconst = {
 
 static const struct mux_data sun6i_a31_ahb1_mux_data __initconst = {
 	.shift = 12,
+};
+
+static const struct mux_data sun4i_apb1_mux_data __initconst = {
+	.shift = 24,
 };
 
 static void __init sunxi_mux_clk_setup(struct device_node *node,
@@ -630,6 +632,12 @@ static const struct div_data sun4i_apb0_data __initconst = {
 	.pow	= 1,
 	.width	= 2,
 	.table	= sun4i_apb0_table,
+};
+
+static const struct div_data sun6i_a31_apb2_div_data __initconst = {
+	.shift	= 0,
+	.pow	= 0,
+	.width	= 4,
 };
 
 static void __init sunxi_divider_clk_setup(struct device_node *node,
@@ -1087,6 +1095,7 @@ static const struct of_device_id clk_div_match[] __initconst = {
 	{.compatible = "allwinner,sun8i-a23-axi-clk", .data = &sun8i_a23_axi_data,},
 	{.compatible = "allwinner,sun4i-a10-ahb-clk", .data = &sun4i_ahb_data,},
 	{.compatible = "allwinner,sun4i-a10-apb0-clk", .data = &sun4i_apb0_data,},
+	{.compatible = "allwinner,sun6i-a31-apb2-div-clk", .data = &sun6i_a31_apb2_div_data,},
 	{}
 };
 
@@ -1100,6 +1109,7 @@ static const struct of_device_id clk_divs_match[] __initconst = {
 /* Matches for mux clocks */
 static const struct of_device_id clk_mux_match[] __initconst = {
 	{.compatible = "allwinner,sun4i-a10-cpu-clk", .data = &sun4i_cpu_mux_data,},
+	{.compatible = "allwinner,sun4i-a10-apb1-mux-clk", .data = &sun4i_apb1_mux_data,},
 	{.compatible = "allwinner,sun6i-a31-ahb1-mux-clk", .data = &sun6i_a31_ahb1_mux_data,},
 	{}
 };

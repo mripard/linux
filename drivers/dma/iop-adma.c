@@ -1557,6 +1557,7 @@ static struct platform_driver iop_adma_driver = {
 	.probe		= iop_adma_probe,
 	.remove		= iop_adma_remove,
 	.driver		= {
+		.owner	= THIS_MODULE,
 		.name	= "iop-adma",
 	},
 };

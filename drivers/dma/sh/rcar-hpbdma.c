@@ -619,6 +619,7 @@ error:
 
 static void hpb_dmae_chan_remove(struct hpb_dmae_device *hpbdev)
 {
+	struct dma_device *dma_dev = &hpbdev->shdma_dev.dma_dev;
 	struct shdma_chan *schan;
 	int i;
 
@@ -627,6 +628,7 @@ static void hpb_dmae_chan_remove(struct hpb_dmae_device *hpbdev)
 
 		shdma_chan_remove(schan);
 	}
+	dma_dev->chancnt = 0;
 }
 
 static int hpb_dmae_remove(struct platform_device *pdev)
@@ -653,6 +655,7 @@ static struct platform_driver hpb_dmae_driver = {
 	.remove		= hpb_dmae_remove,
 	.shutdown	= hpb_dmae_shutdown,
 	.driver = {
+		.owner	= THIS_MODULE,
 		.name	= "hpb-dma-engine",
 	},
 };
