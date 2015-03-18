@@ -406,6 +406,7 @@ config DMA_SUN6I
 	depends on RESET_CONTROLLER
 	select DMA_ENGINE
 	select DMA_VIRTUAL_CHANNELS
+	select DMA_SCHEDULED
 	help
 	  Support for the DMA engine first found in Allwinner A31 SoCs.
 
@@ -430,6 +431,9 @@ config DMA_ENGINE
 
 config DMA_VIRTUAL_CHANNELS
 	tristate
+
+config DMA_SCHEDULED
+	bool
 
 config DMA_ACPI
 	def_bool y
