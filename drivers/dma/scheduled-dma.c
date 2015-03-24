@@ -60,20 +60,6 @@ out:
 	return sreq;
 }
 
-/*
- * Besoin d'une fonction pour pusher un descriptor vers un pchan
- *
- * Flow normal:
- *   - Election d'un pchan (Framework)
- *   - Push d'un descripteur vers le pchan (Driver)
- *   - idle....
- *   - interrupt (driver)
- *   - Transfert terminé, notification vers le framework (driver)
- *   - Nouveau transfert dans la queue?
- *     + Si oui, on est reparti
- *     + Si non, on sort de l'interrupt, le pchan est libéré
- */
-
 struct sdma_desc *sdma_report(struct sdma *sdma,
 			      struct sdma_channel *schan,
 			      enum sdma_report_status status)
