@@ -16,8 +16,21 @@
 #include "scheduled-dma.h"
 #include "virt-dma.h"
 
-static struct sdma_request *sdma_pop_queued_transfer(struct sdma *sdma,
-						     struct sdma_channel *schan)
+/*
+ * sdma_elect_req_by_chan() - Elect new request for a given transfer
+ * @sdma:	pointer to the SDMA device we want to work on.
+ * @schan:	pointer to the channel we want to elect a request for.
+ *
+ * This function tries to elect a pending sdma_request to be run on a
+ * newly available sdma_channel. This function is expected to be
+ * called from an interrupt context.
+ *
+ * Return:	a sdma_request pointer expected to be run on the channel
+ *		given as parameter. NULL on failure or if no pending
+ *		request can be run on that channel
+ */
+static struct sdma_request *sdma_elect_req_by_chan(struct sdma *sdma,
+						   struct sdma_channel *schan)
 {
 	struct sdma_request *sreq = NULL;
 	unsigned long flags;
@@ -87,7 +100,7 @@ struct sdma_desc *sdma_report(struct sdma *sdma,
 		 * driver can handle it, and ask it to do the
 		 * transfer.
 		 */
-		sreq = sdma_pop_queued_transfer(sdma, schan);
+		sreq = sdma_elect_req_by_chan(sdma, schan);
 		if (!sreq) {
 			list_add_tail(&schan->node, &sdma->avail_chans);
 			return NULL;
