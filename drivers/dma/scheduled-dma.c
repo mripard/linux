@@ -16,7 +16,7 @@
 #include "scheduled-dma.h"
 #include "virt-dma.h"
 
-/*
+/**
  * sdma_elect_req_by_chan() - Elect new request for a given transfer
  * @sdma:	pointer to the SDMA device we want to work on.
  * @schan:	pointer to the channel we want to elect a request for.
@@ -73,6 +73,21 @@ out:
 	return sreq;
 }
 
+/**
+ * sdma_report() - Report the status of a transfer
+ * @sdma:	Pointer to the SDMA device we want to work on.
+ * @schan:	Pointer to the channel we want to report the status for.
+ * @status:	Current status to report
+ *
+ * This function is used to report the status of an ongoing transfer
+ * on a given channel. This is expected to be called from an interrupt
+ * handler, to let the scheduled DMA framework know about the current
+ * state of a transfer running on a given transfer.
+ *
+ * Return:	a pointer to a new SDMA descriptor to run on the given
+ *		channel. NULL on failure or if no new descriptor is
+ *		available.
+ */
 struct sdma_desc *sdma_report(struct sdma *sdma,
 			      struct sdma_channel *schan,
 			      enum sdma_report_status status)
