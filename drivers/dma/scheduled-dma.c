@@ -344,7 +344,7 @@ static struct dma_async_tx_descriptor *sdma_prep_memcpy(struct dma_chan *chan,
 {
 	struct sdma_request *req = to_sdma_request(chan);
 	struct sdma *sdma = to_sdma(chan->device);
-	struct sdma_desc *desc;
+	struct sdma_desc *sdesc;
 	dma_addr_t p_lli;
 	void *v_lli;
 
@@ -352,8 +352,8 @@ static struct dma_async_tx_descriptor *sdma_prep_memcpy(struct dma_chan *chan,
 		return NULL;
 
 	/* Allocate our representation of a descriptor */
-	desc = kzalloc(sizeof(*desc), GFP_NOWAIT);
-	if (!desc)
+	sdesc = kzalloc(sizeof(*sdesc), GFP_NOWAIT);
+	if (!sdesc)
 		return NULL;
 
 	v_lli = dma_pool_alloc(sdma->pool, GFP_NOWAIT, &p_lli);
@@ -369,15 +369,15 @@ static struct dma_async_tx_descriptor *sdma_prep_memcpy(struct dma_chan *chan,
 
 	/* Create our single item LLI */
 	sdma->ops->lli_queue(NULL, v_lli, p_lli);
-	desc->p_lli = p_lli;
-	desc->v_lli = v_lli;
+	sdesc->p_lli = p_lli;
+	sdesc->v_lli = v_lli;
 
-	return vchan_tx_prep(&req->vchan, &desc->vdesc, flags);
+	return vchan_tx_prep(&req->vchan, &sdesc->vdesc, flags);
 
 err_lli_free:
 	dma_pool_free(sdma->pool, v_lli, p_lli);
 err_desc_free:
-	kfree(desc);
+	kfree(sdesc);
 
 	return NULL;
 }
@@ -393,7 +393,7 @@ static struct dma_async_tx_descriptor *sdma_prep_slave_sg(struct dma_chan *chan,
 	struct sdma *sdma = to_sdma(chan->device);
 	void *v_lli, *prev_v_lli = NULL;
 	struct scatterlist *sg;
-	struct sdma_desc *desc;
+	struct sdma_desc *sdesc;
 	dma_addr_t p_lli;
 	int i;
 
@@ -401,8 +401,8 @@ static struct dma_async_tx_descriptor *sdma_prep_slave_sg(struct dma_chan *chan,
 		return NULL;
 
 	/* Allocate our representation of a descriptor */
-	desc = kzalloc(sizeof(*desc), GFP_NOWAIT);
-	if (!desc)
+	sdesc = kzalloc(sizeof(*sdesc), GFP_NOWAIT);
+	if (!sdesc)
 		return NULL;
 
 	/*
@@ -430,8 +430,8 @@ static struct dma_async_tx_descriptor *sdma_prep_slave_sg(struct dma_chan *chan,
 		 * Otherwise, queue it to the end of the LLI.
 		 */
 		if (!prev_v_lli) {
-			desc->p_lli = p_lli;
-			desc->v_lli = v_lli;
+			sdesc->p_lli = p_lli;
+			sdesc->v_lli = v_lli;
 			prev_v_lli = v_lli;
 		} else {
 			/* And to queue it at the end of its hardware LLI */
@@ -439,12 +439,12 @@ static struct dma_async_tx_descriptor *sdma_prep_slave_sg(struct dma_chan *chan,
 		}
 	}
 
-	return vchan_tx_prep(&req->vchan, &desc->vdesc, flags);
+	return vchan_tx_prep(&req->vchan, &sdesc->vdesc, flags);
 
 err_lli_free:
 #warning "Free the LLI"
 
-	kfree(desc);
+	kfree(sdesc);
 	return NULL;
 }
 
