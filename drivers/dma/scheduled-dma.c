@@ -16,6 +16,21 @@
 #include "scheduled-dma.h"
 #include "virt-dma.h"
 
+/**
+ * __sdma_elect_chan_by_req() - Elect a new channel for a given request
+ * @sdma:	pointer to the SDMA device we want to work on.
+ * @sreq:	pointer to the request we want to elect a channel for.
+ *
+ * This function tries to find an available sdma_channel to be run on
+ * a pending sdma_request. This function is expected to be called from
+ * an interrupt context.
+ *
+ * This function should be called with sdma->lock held.
+ *
+ * Return:	an sdma_channel pointer expected to be used to transfer
+ *		the given request. NULL on failure or if no channels are
+ *		available.
+ */
 static struct sdma_channel *__sdma_elect_chan_by_req(struct sdma *sdma,
 						     struct sdma_request *sreq)
 {
