@@ -16,8 +16,46 @@
 #include "scheduled-dma.h"
 #include "virt-dma.h"
 
+static struct sdma_channel *__sdma_elect_chan_by_req(struct sdma *sdma,
+						     struct sdma_request *sreq)
+{
+	struct sdma_channel *schan;
+
+	/* Is there an available channel */
+	if (list_empty(&sdma->avail_chans))
+		return NULL;
+
+	/*
+	 * If we don't have any validate_request callback, any request
+	 * can be dispatched to any channel.
+	 *
+	 * Remove the first available channel and return it.
+	 */
+	if (!sdma->ops->validate_request) {
+		schan = list_first_entry(&sdma->avail_chans,
+					 struct sdma_channel, node);
+		list_del_init(&schan->node);
+		return schan;
+	}
+
+	list_for_each_entry(schan, &sdma->avail_chans, node) {
+		/*
+		 * Ask the driver to validate that the request can
+		 * happen on the channel.
+		 */
+		if (sdma->ops->validate_request(schan, sreq)) {
+			list_del_init(&schan->node);
+			return schan;
+		}
+
+		/* Otherwise, just keep looping */
+	}
+
+	return NULL;
+}
+
 /**
- * sdma_elect_req_by_chan() - Elect new request for a given transfer
+ * __sdma_elect_req_by_chan() - Elect new request for a given transfer
  * @sdma:	pointer to the SDMA device we want to work on.
  * @schan:	pointer to the channel we want to elect a request for.
  *
@@ -25,21 +63,20 @@
  * newly available sdma_channel. This function is expected to be
  * called from an interrupt context.
  *
+ * This function should be called with sdma->lock held.
+ *
  * Return:	a sdma_request pointer expected to be run on the channel
  *		given as parameter. NULL on failure or if no pending
  *		request can be run on that channel
  */
-static struct sdma_request *sdma_elect_req_by_chan(struct sdma *sdma,
-						   struct sdma_channel *schan)
+static struct sdma_request *__sdma_elect_req_by_chan(struct sdma *sdma,
+						     struct sdma_channel *schan)
 {
-	struct sdma_request *sreq = NULL;
-	unsigned long flags;
-
-	spin_lock_irqsave(&sdma->lock, flags);
+	struct sdma_request *sreq;
 
 	/* No requests are awaiting an available channel */
 	if (list_empty(&sdma->pend_reqs))
-		goto out;
+		return NULL;
 
 	/*
 	 * If we don't have any validate_request callback, any request
@@ -51,7 +88,7 @@ static struct sdma_request *sdma_elect_req_by_chan(struct sdma *sdma,
 		sreq = list_first_entry(&sdma->pend_reqs,
 					struct sdma_request, node);
 		list_del_init(&sreq->node);
-		goto out;
+		return sreq;
 	}
 
 	list_for_each_entry(sreq, &sdma->pend_reqs, node) {
@@ -61,16 +98,13 @@ static struct sdma_request *sdma_elect_req_by_chan(struct sdma *sdma,
 		 */
 		if (sdma->ops->validate_request(schan, sreq)) {
 			list_del_init(&sreq->node);
-			goto out;
+			return sreq;
 		}
 
 		/* Otherwise, just keep looping */
 	}
 
-out:
-	spin_unlock_irqrestore(&sdma->lock, flags);
-
-	return sreq;
+	return NULL;
 }
 
 /**
@@ -115,11 +149,14 @@ struct sdma_desc *sdma_report(struct sdma *sdma,
 		 * driver can handle it, and ask it to do the
 		 * transfer.
 		 */
-		sreq = sdma_elect_req_by_chan(sdma, schan);
+		spin_lock(&sdma->lock);
+		sreq = __sdma_elect_req_by_chan(sdma, schan);
 		if (!sreq) {
 			list_add_tail(&schan->node, &sdma->avail_chans);
+			spin_unlock(&sdma->lock);
 			return NULL;
 		}
+		spin_unlock(&sdma->lock);
 
 		/* Mark the request as assigned to a particular channel */
 		sreq->chan = schan;
@@ -416,31 +453,7 @@ static void sdma_issue_pending(struct dma_chan *chan)
 		goto out_chan_unlock;
 
 	spin_lock(&sdma->lock);
-
-	/* Is there an available channel */
-	if (list_empty(&sdma->avail_chans))
-		goto out_main_unlock;
-
-	/*
-	 * If there's no validate_request callback, it means that all
-	 * channels can transfer any request. Pick the first available
-	 * channel.
-	 *
-	 * Otherwise, iterate over all the pending channels and call
-	 * validate_request.
-	 */
-	if (!sdma->ops->validate_request) {
-		schan = list_first_entry(&sdma->avail_chans,
-					 struct sdma_channel, node);
-	} else {
-		list_for_each_entry(schan, &sdma->avail_chans, node) {
-			if (sdma->ops->validate_request(schan, sreq)) {
-				list_del_init(&schan->node);
-				break;
-			}
-		}
-	}
-
+	schan = __sdma_elect_chan_by_req(sdma, sreq);
 	if (!schan)
 		goto out_main_unlock;
 
