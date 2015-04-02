@@ -13,6 +13,12 @@
 #ifndef _SCHEDULED_DMA_H_
 #define _SCHEDULED_DMA_H_
 
+/**
+ * enum sdma_transfer_type - Transfer type identifier
+ *
+ * @SDMA_TRANSFER_MEMCPY:	memory to memory copy
+ * @SDMA_TRANSFER_SLAVE:	memory to device or device to memory transfer
+ */
 enum sdma_transfer_type {
 	SDMA_TRANSFER_MEMCPY,
 	SDMA_TRANSFER_SLAVE,
@@ -23,10 +29,23 @@ enum sdma_report_status {
 	SDMA_REPORT_TRANSFER,
 };
 
+/**
+ * struct sdma_desc - Representation of a hardware descriptor.
+ *
+ * @vdesc:	Virtual DMA descriptor handle
+ * @p_lli:	Physical address of the first descriptor in our LLI
+ * @v_lli:	Virtual address of the first descriptor in our LLI
+ *
+ * This structure is our software representation of a hardware
+ * descriptor, and the link between our LLI and the virt_dma
+ * descriptor.
+ *
+ * It is meant to be allocated and initialize in the prep_* calls, and
+ * will be used to identify a unique transfer within the Scheduled DMA
+ * framework.
+ */
 struct sdma_desc {
 	struct virt_dma_desc	vdesc;
-
-	/* Entry point to our LLI */
 	dma_addr_t		p_lli;
 	void			*v_lli;
 };

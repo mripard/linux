@@ -356,6 +356,7 @@ static struct dma_async_tx_descriptor *sdma_prep_memcpy(struct dma_chan *chan,
 	if (!sdesc)
 		return NULL;
 
+	/* Allocate a new LLI */
 	v_lli = dma_pool_alloc(sdma->pool, GFP_NOWAIT, &p_lli);
 	if (!v_lli)
 		goto err_desc_free;
