@@ -37,8 +37,11 @@ enum sdma_report_status {
  * @v_lli:	Virtual address of the first descriptor in our LLI
  *
  * This structure is our software representation of a hardware
- * descriptor, and the link between our LLI and the virt_dma
- * descriptor.
+ * descriptor, ie an in-memory structure fed to the DMA controller to
+ * configure it and describe the transfer and its parameters.
+ *
+ * This structure is also our link link between our LLI and the
+ * virt_dma descriptor.
  *
  * It is meant to be allocated and initialize in the prep_* calls, and
  * will be used to identify a unique transfer within the Scheduled DMA
@@ -50,6 +53,23 @@ struct sdma_desc {
 	void			*v_lli;
 };
 
+/**
+ * struct sdma_channel - Representation of a hardware channel.
+ *
+ * @desc:	Pointer to the transfer currently happening on this channel.
+ * @index:	Physical index of this particular channel.
+ * @node:	List node for the available channels list
+ * @private:	Pointer to some opaque private data to be filled by client
+ *		drivers.
+ *
+ * This structure is our software representation of a DMA channel, ie
+ * a hardware entity using the descriptors to transfer data between a
+ * device and memory, or operate directly on memory.
+ *
+ * This structure will be allocated at initialization, and a pointer
+ * to one of its instance will be passed to all the channel-related
+ * operations.
+ */
 struct sdma_channel {
 	struct sdma_desc	*desc;
 	unsigned int		index;
@@ -57,6 +77,26 @@ struct sdma_channel {
 	void			*private;
 };
 
+/**
+ * struct sdma_request - Representation of a hardware request
+ *
+ * @cfg:	Channel configuration to use for the transfers using this
+ *		request.
+ * @node:	List node for the pending requests list
+ * @vchan:	virt_dma channel handle
+ * @chan:	Current channel associated with this request
+ * @private:	Pointer to some opaque private data to be filled by client
+ *		drivers.
+ *
+ * This structure is our software representation of a DMA request, ie
+ * one of the possible endpoints of a DMA transfer.
+ *
+ * This structure is the one that will be associated to a struct
+ * dma_chan pointer requested by our client drivers, meaning that
+ * there might be more requests than actual DMA channel on the device,
+ * and the association between a request and a channel will be very
+ * volatile, changing from one transfer to another.
+ */
 struct sdma_request {
 	struct dma_slave_config	cfg;
 	struct list_head	node;
