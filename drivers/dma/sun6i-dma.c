@@ -254,7 +254,7 @@ static irqreturn_t sun6i_dma_interrupt(int irq, void *dev_id)
 				struct sdma_channel *schan = sdma->channels + j;
 				struct sdma_desc *sdesc;
 
-				sdesc = sdma_report(sdma, schan, SDMA_REPORT_TRANSFER);
+				sdesc = sdma_report_transfer(sdma, schan);
 				if (sdesc)
 					sun6i_dma_channel_start(schan, sdesc);
 			}
