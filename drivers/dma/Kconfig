@@ -405,7 +405,7 @@ config DMA_SUN6I
 	depends on MACH_SUN6I || MACH_SUN8I || COMPILE_TEST
 	depends on RESET_CONTROLLER
 	select DMA_ENGINE
-	select DMA_VIRTUAL_CHANNELS
+	select DMA_SCHEDULED
 	help
 	  Support for the DMA engine first found in Allwinner A31 SoCs.
 
