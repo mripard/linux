@@ -101,6 +101,24 @@ struct sdma_request {
 	void			*private;
 };
 
+/**
+ * struct sdma_ops - Scheduled DMA operations
+ *
+ * @lli_has_next:	Does the LLI item have a next item?
+ * @lli_next:		Returns the next item of a given LLI item, if any
+ * @lli_init:		Initialize a empty LLI item with the given configuration
+ * @lli_queue:		Queue a LLI item after another one
+ * @lli_size:		Return the size of a transfer described by the LLI item
+ *
+ * @validate_request:
+ *
+ * @channel_pause:
+ * @channel_resume:
+ * @channel_start:
+ * @channel_terminate:
+ * @channel_residue:
+ */
+
 struct sdma_ops {
 	/* LLI management operations */
 	bool			(*lli_has_next)(void *v_lli);
