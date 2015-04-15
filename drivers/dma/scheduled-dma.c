@@ -123,72 +123,64 @@ static struct sdma_request *__sdma_elect_req_by_chan(struct sdma *sdma,
 }
 
 /**
- * sdma_report() - Report the status of a transfer
+ * sdma_report_transfer() - Report the completion of a transfer
  * @sdma:	Pointer to the SDMA device we want to work on.
  * @schan:	Pointer to the channel we want to report the status for.
- * @status:	Current status to report
  *
- * This function is used to report the status of an ongoing transfer
- * on a given channel. This is expected to be called from an interrupt
- * handler, to let the scheduled DMA framework know about the current
- * state of a transfer running on a given transfer.
+ * This function is used to report to the scheduled DMA framework that
+ * a pending transfer on a given channel is now completed.
+ *
+ * Upon transfer completion, it will try to elect a new pending
+ * request for the channel, in order to keep the channel running.
+ *
+ * This is expected to be called from an interrupt handler, and as
+ * such will not sleep.
  *
  * Return:	a pointer to a new SDMA descriptor to run on the given
  *		channel. NULL on failure or if no new descriptor is
  *		available.
  */
-struct sdma_desc *sdma_report(struct sdma *sdma,
-			      struct sdma_channel *schan,
-			      enum sdma_report_status status)
+struct sdma_desc *sdma_report_transfer(struct sdma *sdma,
+				       struct sdma_channel *schan)
 {
 	struct sdma_desc *sdesc = NULL;
 	struct virt_dma_desc *vdesc;
 	struct sdma_request *sreq;
 
-	switch (status) {
-	case SDMA_REPORT_TRANSFER:
-		/*
-		 * We're done with the current transfer that was in this
-		 * physical channel.
-		 */
-		vchan_cookie_complete(&schan->desc->vdesc);
+	/*
+	 * We're done with the current transfer that was in this
+	 * physical channel.
+	 */
+	vchan_cookie_complete(&schan->desc->vdesc);
 
-		/*
-		 * Now, try to see if there's any queued transfer
-		 * awaiting an available channel.
-		 *
-		 * If not, just bail out, and mark the pchan as
-		 * available.
-		 *
-		 * If there's such a transfer, validate that the
-		 * driver can handle it, and ask it to do the
-		 * transfer.
-		 */
-		spin_lock(&sdma->lock);
-		sreq = __sdma_elect_req_by_chan(sdma, schan);
-		if (!sreq) {
-			list_add_tail(&schan->node, &sdma->avail_chans);
-			spin_unlock(&sdma->lock);
-			return NULL;
-		}
+	/*
+	 * Now, try to see if there's any queued transfer awaiting an
+	 * available channel.
+	 *
+	 * If not, just bail out, and mark the pchan as available.
+	 *
+	 * If there's such a transfer, validate that the driver can
+	 * handle it, and ask it to do the transfer.
+	 */
+	spin_lock(&sdma->lock);
+	sreq = __sdma_elect_req_by_chan(sdma, schan);
+	if (!sreq) {
+		list_add_tail(&schan->node, &sdma->avail_chans);
 		spin_unlock(&sdma->lock);
-
-		/* Mark the request as assigned to a particular channel */
-		sreq->chan = schan;
-
-		/* Retrieve the next transfer descriptor */
-		vdesc = vchan_next_desc(&sreq->vchan);
-		schan->desc = sdesc = to_sdma_desc(&vdesc->tx);
-
-		break;
-
-	default:
-		break;
+		return NULL;
 	}
+	spin_unlock(&sdma->lock);
+
+	/* Mark the request as assigned to a particular channel */
+	sreq->chan = schan;
+
+	/* Retrieve the next transfer descriptor */
+	vdesc = vchan_next_desc(&sreq->vchan);
+	schan->desc = sdesc = to_sdma_desc(&vdesc->tx);
 
 	return sdesc;
 }
-EXPORT_SYMBOL_GPL(sdma_report);
+EXPORT_SYMBOL_GPL(sdma_report_transfer);
 
 static enum dma_status sdma_tx_status(struct dma_chan *chan,
 				      dma_cookie_t cookie,

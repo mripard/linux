@@ -24,11 +24,6 @@ enum sdma_transfer_type {
 	SDMA_TRANSFER_SLAVE,
 };
 
-enum sdma_report_status {
-	SDMA_REPORT_CHUNK,
-	SDMA_REPORT_TRANSFER,
-};
-
 /**
  * struct sdma_desc - Representation of a hardware descriptor.
  *
@@ -181,9 +176,8 @@ static inline void sdma_set_chan_private(struct sdma *sdma, void *ptr)
 	}
 }
 
-struct sdma_desc *sdma_report(struct sdma *sdma,
-			      struct sdma_channel *chan,
-			      enum sdma_report_status status);
+struct sdma_desc *sdma_report_transfer(struct sdma *sdma,
+				       struct sdma_channel *chan);
 
 struct sdma *sdma_alloc(struct device *dev,
 			unsigned int channels,
