@@ -469,9 +469,16 @@ static void sdma_issue_pending(struct dma_chan *chan)
 		goto out_chan_unlock;
 
 	spin_lock(&sdma->lock);
+
+	/*
+	 * If we can't get a channel to do our work, just queue the
+	 * request in our pending list.
+	 */
 	schan = __sdma_elect_chan_by_req(sdma, sreq);
-	if (!schan)
+	if (!schan) {
+		list_add_tail(&sreq->node, &sdma->pend_reqs);
 		goto out_main_unlock;
+	}
 
 	sreq->chan = schan;
 
