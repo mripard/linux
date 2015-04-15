@@ -433,7 +433,8 @@ config DMA_VIRTUAL_CHANNELS
 	tristate
 
 config DMA_SCHEDULED
-	bool
+	select DMA_VIRTUAL_CHANNELS
+	tristate
 
 config DMA_ACPI
 	def_bool y
