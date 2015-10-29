@@ -15,10 +15,12 @@
 #include <drm/drm_crtc.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_modes.h>
+#include <drm/drm_panel.h>
 
 #include <linux/component.h>
 #include <linux/ioport.h>
 #include <linux/of_address.h>
+#include <linux/of_graph.h>
 #include <linux/of_irq.h>
 #include <linux/regmap.h>
 #include <linux/reset.h>
@@ -26,6 +28,7 @@
 #include "sun4i_crtc.h"
 #include "sun4i_dotclock.h"
 #include "sun4i_drv.h"
+#include "sun4i_rgb.h"
 #include "sun4i_tcon.h"
 
 void sun4i_tcon_disable(struct sun4i_tcon *tcon)
@@ -385,12 +388,29 @@ static int sun4i_tcon_init_regmap(struct device *dev,
 	return 0;
 }
 
+static struct device_node *sun4i_tcon_find_panel(struct device_node *node)
+{
+	struct device_node *port, *end_node;
+
+	/* Inputs are listed first, then outputs */
+	port = of_graph_get_port_by_id(node, 1);
+
+	/* Iterate over the endpoints to find a panel */
+	for_each_child_of_node(port, end_node)
+		/* If the endpoint is not a panel, go on */
+		if (of_property_read_bool(end_node, "allwinner,panel"))
+			return of_graph_get_remote_port_parent(end_node);
+
+	return NULL;
+}
+
 static int sun4i_tcon_bind(struct device *dev, struct device *master,
 			   void *data)
 {
 	struct drm_device *drm = data;
 	struct sun4i_drv *drv = drm->dev_private;
 	struct sun4i_tcon *tcon;
+	struct device_node *np;
 	int ret;
 
 	tcon = devm_kzalloc(dev, sizeof(*tcon), GFP_KERNEL);
@@ -437,7 +457,20 @@ static int sun4i_tcon_bind(struct device *dev, struct device *master,
 		goto err_free_clocks;
 	}
 
-	return 0;
+	np = sun4i_tcon_find_panel(dev->of_node);
+	if (!np) {
+		dev_info(dev, "No panel found... RGB output disabled\n");
+		return 0;
+	}
+
+	tcon->panel = of_drm_find_panel(np);
+	if (!tcon->panel) {
+		dev_err(dev, "Couldn't find our panel\n");
+		ret = -ENODEV;
+		goto err_free_clocks;
+	}
+
+	return sun4i_rgb_init(drm);
 
 err_free_clocks:
 	sun4i_tcon_free_clocks(tcon);
@@ -461,6 +494,19 @@ static struct component_ops sun4i_tcon_ops = {
 
 static int sun4i_tcon_probe(struct platform_device *pdev)
 {
+	struct device_node *node = pdev->dev.of_node;
+	struct device_node *panel_node;
+
+	panel_node = sun4i_tcon_find_panel(node);
+	if (panel_node) {
+		/*
+		 * If the panel is not ready yet, defer the probe
+		 * before registering into the component framework.
+		 */
+		if (!of_drm_find_panel(panel_node))
+			return -EPROBE_DEFER;
+	}
+
 	return component_add(&pdev->dev, &sun4i_tcon_ops);
 }
 
