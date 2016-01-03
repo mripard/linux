@@ -117,6 +117,11 @@
 	};
 
 	soc@01c00000 {
+		sram_a2: sram@00040000 {
+			compatible = "allwinner,sun8i-a33-ar100-sram";
+			reg = <0x00040000 0x14000>;
+		};
+
 		crypto: crypto-engine@01c15000 {
 			compatible = "allwinner,sun4i-a10-crypto";
 			reg = <0x01c15000 0x1000>;
@@ -157,6 +162,12 @@
 			status = "disabled";
 			#phy-cells = <1>;
 		};
+	};
+
+	ar100 {
+		compatible = "allwinner,sun8i-a33-ar100";
+		allwinner,arisc-sram = <&sram_a2>;
+		clocks = <&ar100>;
 	};
 };
 
