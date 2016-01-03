@@ -7,6 +7,8 @@
  *
  */
 
+#define DEBUG
+
 #include <linux/capability.h>
 #include <linux/device.h>
 #include <linux/module.h>
