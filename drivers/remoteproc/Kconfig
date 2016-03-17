@@ -41,6 +41,14 @@ config STE_MODEM_RPROC
 	  This can be either built-in or a loadable module.
 	  If unsure say N.
 
+config SUN6I_AR100
+	tristate "Allwinner A31 AR100 Co-Processor Driver"
+	default ARCH_SUN6I || ARCH_SUN8I
+	help
+	  Say y here to enable the AR100 co-processor support. This
+	  device is responsible on setting up the processor and
+	  loading its firmware.
+
 config WKUP_M3_RPROC
 	tristate "AMx3xx Wakeup M3 remoteproc support"
 	depends on SOC_AM33XX || SOC_AM43XX

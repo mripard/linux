@@ -2,14 +2,6 @@
 # Allwinner sunXi SoC drivers
 #
 
-config SUN6I_AR100
-	tristate "Allwinner A31 AR100 Co-Processor Driver"
-	default ARCH_SUN6I || ARCH_SUN8I
-	help
-	  Say y here to enable the AR100 co-processor support. This
-	  device is responsible on setting up the processor and
-	  loading its firmware.
-
 config SUNXI_SRAM
 	bool
 	default ARCH_SUNXI

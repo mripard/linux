@@ -56,6 +56,39 @@ static void sun6i_ar100_load_firmware(const struct firmware *fw, void *context)
 	writel(val | 1, ar100->cpucfg);
 }
 
+static int omap_rproc_start(struct rproc *rproc)
+{
+	struct sun6i_ar100 *ar100 = rproc->priv;
+
+	/* Enable the AR100 clock */
+	clk_prepare_enable(ar100->clk);
+
+	/* And bring back the AR100 */
+	val = readl(ar100->cpucfg);
+	writel(val | 1, ar100->cpucfg);
+
+	return 0;
+}
+
+static int omap_rproc_stop(struct rproc *rproc)
+{
+	struct sun6i_ar100 *ar100 = rproc->priv;
+
+	/* Put back the AR100 in reset */
+	val = readl(ar100->cpucfg);
+	writel(val & ~1, ar100->cpucfg);
+
+	/* And disable our clock */
+	clk_disable_unprepare(ar100->clk);
+
+	return 0;
+}
+
+static struct rproc_ops sun6i_ar100_ops = {
+	.start		= sun6i_ar100_start,
+	.stop		= sun6i_ar100_stop,
+};
+
 static int sun6i_ar100_probe(struct platform_device *pdev)
 {
 	struct device_node *cpucfg_np, *sram_np;
@@ -63,9 +96,13 @@ static int sun6i_ar100_probe(struct platform_device *pdev)
 	u32 val;
 	int ret;
 
-	ar100 = devm_kzalloc(&pdev->dev, sizeof(*ar100), GFP_KERNEL);
-	if (!ar100)
+	rproc = rproc_alloc(&pdev->dev, pdev->name, &sun6i_ar100_ops,
+			    SUN6I_AR100_FIRMWARE, sizeof(*ar100));
+	if (!rproc)
 		return -ENOMEM;
+	rproc->has_iommu = false;
+	rproc->fw_ops = sun6i_ar100_ops;
+	ar100 = rproc->priv;
 
 	ar100->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(ar100->clk)) {
@@ -104,9 +141,6 @@ static int sun6i_ar100_probe(struct platform_device *pdev)
 	/* Put the AR100 in reset */
 	val = readl(ar100->cpucfg);
 	writel(~1UL & val, ar100->cpucfg);
-
-	/* Enable the AR100 clock */
-	clk_prepare_enable(ar100->clk);
 
 	/* Request the firmware */
 	ret = request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG,
