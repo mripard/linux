@@ -77,6 +77,10 @@
 	};
 };
 
+&be0 {
+	status = "okay";
+};
+
 &ehci0 {
 	status = "okay";
 };
@@ -89,6 +93,10 @@
 };
 
 &emac_sram {
+	status = "okay";
+};
+
+&hdmi0 {
 	status = "okay";
 };
 
@@ -246,6 +254,10 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&spi2_pins_b>,
 		    <&spi2_cs0_pins_b>;
+	status = "okay";
+};
+
+&tcon0 {
 	status = "okay";
 };
 
