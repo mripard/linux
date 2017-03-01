@@ -54,6 +54,8 @@ EXPORT_SYMBOL(sun4i_tcon_enable);
 
 void sun4i_tcon_channel_disable(struct sun4i_tcon *tcon, int channel)
 {
+	DRM_DEBUG_DRIVER("Disabling TCON channel %d\n", channel);
+
 	/* Disable the TCON's channel */
 	if (channel == 0) {
 		regmap_update_bits(tcon->regs, SUN4I_TCON0_CTL_REG,
@@ -71,6 +73,8 @@ EXPORT_SYMBOL(sun4i_tcon_channel_disable);
 
 void sun4i_tcon_channel_enable(struct sun4i_tcon *tcon, int channel)
 {
+	DRM_DEBUG_DRIVER("Enabling TCON channel %d\n", channel);
+
 	/* Enable the TCON's channel */
 	if (channel == 0) {
 		regmap_update_bits(tcon->regs, SUN4I_TCON0_CTL_REG,
