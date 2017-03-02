@@ -126,7 +126,7 @@ static int sun4i_tcon_get_clk_delay(struct drm_display_mode *mode,
 	return delay;
 }
 
-void sun4i_tcon0_mode_set(struct sun4i_tcon *tcon,
+void sun4i_tcon0_mode_set(struct sun4i_tcon *tcon, struct drm_encoder *encoder,
 			  struct drm_display_mode *mode)
 {
 	unsigned int bp, hsync, vsync;
@@ -199,7 +199,7 @@ void sun4i_tcon0_mode_set(struct sun4i_tcon *tcon,
 }
 EXPORT_SYMBOL(sun4i_tcon0_mode_set);
 
-void sun4i_tcon1_mode_set(struct sun4i_tcon *tcon,
+void sun4i_tcon1_mode_set(struct sun4i_tcon *tcon, struct drm_encoder *encoder,
 			  struct drm_display_mode *mode)
 {
 	unsigned int bp, hsync, vsync;
