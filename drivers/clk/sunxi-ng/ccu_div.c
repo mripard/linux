@@ -78,10 +78,10 @@ static int ccu_div_determine_rate(struct clk_hw *hw,
 	struct ccu_div *cd = hw_to_ccu_div(hw);
 
 	if (clk_hw_get_num_parents(hw) == 1) {
-		req->rate = divider_round_rate(hw, req->rate,
+		req->rate = divider_round_rate(hw, clk_hw_get_parent(hw),
+					       req->rate,
 					       &req->best_parent_rate,
-					       cd->div.table,
-					       cd->div.width,
+					       cd->div.table, cd->div.width,
 					       cd->div.flags);
 
 		req->best_parent_hw = clk_hw_get_parent(hw);

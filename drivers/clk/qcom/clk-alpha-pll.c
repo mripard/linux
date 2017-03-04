@@ -478,8 +478,9 @@ clk_alpha_pll_postdiv_round_rate(struct clk_hw *hw, unsigned long rate,
 {
 	struct clk_alpha_pll_postdiv *pll = to_clk_alpha_pll_postdiv(hw);
 
-	return divider_round_rate(hw, rate, prate, clk_alpha_div_table,
-				  pll->width, CLK_DIVIDER_POWER_OF_TWO);
+	return divider_round_rate(hw, clk_hw_get_parent(hw), rate, prate,
+				  clk_alpha_div_table, pll->width,
+				  CLK_DIVIDER_POWER_OF_TWO);
 }
 
 static int clk_alpha_pll_postdiv_set_rate(struct clk_hw *hw, unsigned long rate,

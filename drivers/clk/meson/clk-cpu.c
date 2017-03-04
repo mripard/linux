@@ -59,8 +59,9 @@ static long meson_clk_cpu_round_rate(struct clk_hw *hw, unsigned long rate,
 {
 	struct meson_clk_cpu *clk_cpu = to_meson_clk_cpu_hw(hw);
 
-	return divider_round_rate(hw, rate, prate, clk_cpu->div_table,
-				  MESON_N_WIDTH, CLK_DIVIDER_ROUND_CLOSEST);
+	return divider_round_rate(hw, clk_hw_get_parent(hw), rate, prate,
+				  clk_cpu->div_table, MESON_N_WIDTH,
+				  CLK_DIVIDER_ROUND_CLOSEST);
 }
 
 static int meson_clk_cpu_set_rate(struct clk_hw *hw, unsigned long rate,
