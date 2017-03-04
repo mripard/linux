@@ -64,8 +64,9 @@ static long hi6220_clkdiv_round_rate(struct clk_hw *hw, unsigned long rate,
 {
 	struct hi6220_clk_divider *dclk = to_hi6220_clk_divider(hw);
 
-	return divider_round_rate(hw, rate, prate, dclk->table,
-				  dclk->width, CLK_DIVIDER_ROUND_CLOSEST);
+	return divider_round_rate(hw, clk_hw_get_parent(hw), rate, prate,
+				  dclk->table, dclk->width,
+				  CLK_DIVIDER_ROUND_CLOSEST);
 }
 
 static int hi6220_clkdiv_set_rate(struct clk_hw *hw, unsigned long rate,

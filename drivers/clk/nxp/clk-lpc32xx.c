@@ -975,8 +975,9 @@ static long clk_divider_round_rate(struct clk_hw *hw, unsigned long rate,
 		return DIV_ROUND_UP(*prate, bestdiv);
 	}
 
-	return divider_round_rate(hw, rate, prate, divider->table,
-				  divider->width, divider->flags);
+	return divider_round_rate(hw, clk_hw_get_parent(hw), rate, prate,
+				  divider->table, divider->width,
+				  divider->flags);
 }
 
 static int clk_divider_set_rate(struct clk_hw *hw, unsigned long rate,

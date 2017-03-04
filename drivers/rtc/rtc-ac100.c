@@ -153,13 +153,15 @@ static long ac100_clkout_round_rate(struct clk_hw *hw, unsigned long rate,
 	int i;
 
 	if (prate == AC100_RTC_32K_RATE)
-		return divider_round_rate(hw, rate, &prate, NULL,
+		return divider_round_rate(hw, clk_hw_get_parent(hw), rate,
+					  &prate, NULL,
 					  AC100_CLKOUT_DIV_WIDTH,
 					  CLK_DIVIDER_POWER_OF_TWO);
 
 	for (i = 0; ac100_clkout_prediv[i].div; i++) {
 		tmp_prate = DIV_ROUND_UP(prate, ac100_clkout_prediv[i].val);
-		tmp_rate = divider_round_rate(hw, rate, &tmp_prate, NULL,
+		tmp_rate = divider_round_rate(hw, clk_hw_get_parent(hw), rate,
+					      &tmp_prate, NULL,
 					      AC100_CLKOUT_DIV_WIDTH,
 					      CLK_DIVIDER_POWER_OF_TWO);
 
