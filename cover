@@ -1,0 +1,25 @@
+drm: sun4i: Add support for the HDMI controller
+
+Hi,
+
+Here is an attempt at getting the HDMI controller running.
+
+This HDMI controller is found on a number of old Allwinner SoCs (A10, A10s,
+A20, A31).
+
+This driver only supports for now the A10s because it was an easy target,
+being very close to the A13 that is already supported by our DRM driver.
+
+There's nothing out of the extraordinary there, except maybe the clock
+setup. All the internal clocks (TMDS, DDC) have been modeled using the
+common clock framework, the TMDS clock being the parent of the DDC one.
+
+While this might sound overkill, other SoC have a different, external
+source for the DDC clock, which will be easier to support through the clock
+framework.
+
+It's still a bit rough around the edges, as it doesn't work for all the
+modes. This will need to be fixed before being merged obviously.
+
+Let me know what you think!
+Maxime
