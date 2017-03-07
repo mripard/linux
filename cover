@@ -21,5 +21,9 @@ framework.
 It's still a bit rough around the edges, as it doesn't work for all the
 modes. This will need to be fixed before being merged obviously.
 
+The IP also supports audio (through an already supported i2s controller,
+and some missing configuration in the HDMI controller) and CEC. Both will
+come eventually.
+
 Let me know what you think!
 Maxime
