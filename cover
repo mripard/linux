@@ -27,3 +27,7 @@ come eventually.
 
 Let me know what you think!
 Maxime
+
+Changes from v1:
+  - Fixed a typo in the CCU header
+  - Reintroduced the comment for the backporch timings
