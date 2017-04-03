@@ -95,7 +95,7 @@
 	status = "okay";
 };
 
-&hdmi0 {
+&hdmi {
 	status = "okay";
 };
 
