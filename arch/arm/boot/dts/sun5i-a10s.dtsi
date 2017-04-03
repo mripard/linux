@@ -78,7 +78,7 @@
 	};
 
 	soc@01c00000 {
-		hdmi0: hdmi@01c16000 {
+		hdmi: hdmi@01c16000 {
 			compatible = "allwinner,sun5i-a10s-hdmi";
 			reg = <0x01c16000 0x1000>;
 			clocks = <&ccu CLK_AHB_HDMI>, <&ccu CLK_HDMI>,
@@ -91,9 +91,9 @@
 				#address-cells = <1>;
 				#size-cells = <0>;
 
-				hdmi0_in_tcon0: endpoint@0 {
+				hdmi_in_tcon0: endpoint@0 {
 					reg = <0>;
-					remote-endpoint = <&tcon0_out_hdmi0>;
+					remote-endpoint = <&tcon0_out_hdmi>;
 				};
 			};
 		};
@@ -156,9 +156,9 @@
 };
 
 &tcon0_out {
-	tcon0_out_hdmi0: endpoint@2 {
+	tcon0_out_hdmi: endpoint@2 {
 		reg = <2>;
-		remote-endpoint = <&hdmi0_in_tcon0>;
+		remote-endpoint = <&hdmi_in_tcon0>;
 		allwinner,tcon-channel = <1>;
 	};
 };
