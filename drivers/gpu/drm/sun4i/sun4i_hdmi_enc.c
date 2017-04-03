@@ -119,6 +119,7 @@ static void sun4i_hdmi_mode_set(struct drm_encoder *encoder,
 
 	sun4i_tcon1_mode_set(tcon, encoder, mode);
 	clk_set_rate(tcon->sclk1, mode->crtc_clock * 1000);
+	clk_set_rate(hdmi->mod_clk, mode->crtc_clock * 1000);
 	clk_set_rate(hdmi->tmds_clk, mode->crtc_clock * 1000);
 
 	/* Set input sync enable */
