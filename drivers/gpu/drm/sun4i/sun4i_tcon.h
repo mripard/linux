@@ -190,9 +190,9 @@ void sun4i_tcon_enable_vblank(struct sun4i_tcon *tcon, bool enable);
 /* Mode Related Controls */
 void sun4i_tcon_switch_interlace(struct sun4i_tcon *tcon,
 				 bool enable);
-void sun4i_tcon0_mode_set(struct sun4i_tcon *tcon, struct drm_encoder *encoder,
+void sun4i_tcon0_mode_set(struct sun4i_tcon *tcon,
 			  struct drm_display_mode *mode);
-void sun4i_tcon1_mode_set(struct sun4i_tcon *tcon, struct drm_encoder *encoder,
+void sun4i_tcon1_mode_set(struct sun4i_tcon *tcon,
 			  struct drm_display_mode *mode);
 
 #endif /* __SUN4I_TCON_H__ */
