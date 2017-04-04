@@ -87,13 +87,24 @@
 			clock-names = "ahb", "mod", "pll-0", "pll-1";
 			status = "disabled";
 
-			port {
+			ports {
 				#address-cells = <1>;
 				#size-cells = <0>;
 
-				hdmi_in_tcon0: endpoint@0 {
+				hdmi_in: port@0 {
+					#address-cells = <1>;
+					#size-cells = <0>;
 					reg = <0>;
-					remote-endpoint = <&tcon0_out_hdmi>;
+
+					hdmi_in_tcon0: endpoint {
+						remote-endpoint = <&tcon0_out_hdmi>;
+					};
+				};
+
+				hdmi_out: port@1 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <1>;
 				};
 			};
 		};
