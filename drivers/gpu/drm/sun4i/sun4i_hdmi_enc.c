@@ -117,7 +117,9 @@ static void sun4i_hdmi_mode_set(struct drm_encoder *encoder,
 	unsigned int x, y;
 	u32 val;
 
-	sun4i_tcon1_mode_set(tcon, encoder, mode);
+	sun4i_tcon1_mode_set(tcon, mode);
+	sun4i_tcon_set_mux(tcon, 1, encoder);
+
 	clk_set_rate(tcon->sclk1, mode->crtc_clock * 1000);
 	clk_set_rate(hdmi->mod_clk, mode->crtc_clock * 1000);
 	clk_set_rate(hdmi->tmds_clk, mode->crtc_clock * 1000);
