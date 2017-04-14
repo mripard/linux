@@ -55,7 +55,8 @@ struct bcm_device {
 	struct gpio_desc	*device_wakeup;
 	struct gpio_desc	*shutdown;
 
-	struct clk		*clk;
+	struct clk		*lpo_clk;
+	struct clk		*tcxo_clk;
 	bool			clk_enabled;
 
 	u32			init_speed;
@@ -145,14 +146,22 @@ static bool bcm_device_exists(struct bcm_device *device)
 
 static int bcm_gpio_set_power(struct bcm_device *dev, bool powered)
 {
-	if (powered && !IS_ERR(dev->clk) && !dev->clk_enabled)
-		clk_prepare_enable(dev->clk);
+	if (powered && !dev->clk_enabled) {
+		if (!IS_ERR_OR_NULL(dev->lpo_clk))
+			clk_prepare_enable(dev->lpo_clk);
+		if (!IS_ERR_OR_NULL(dev->tcxo_clk))
+			clk_prepare_enable(dev->tcxo_clk);
+	}
 
 	gpiod_set_value(dev->shutdown, !powered);
 	gpiod_set_value(dev->device_wakeup, powered);
 
-	if (!powered && !IS_ERR(dev->clk) && dev->clk_enabled)
-		clk_disable_unprepare(dev->clk);
+	if (!powered && dev->clk_enabled) {
+		if (!IS_ERR_OR_NULL(dev->lpo_clk))
+			clk_disable_unprepare(dev->lpo_clk);
+		if (!IS_ERR_OR_NULL(dev->tcxo_clk))
+			clk_disable_unprepare(dev->tcxo_clk);
+	}
 
 	dev->clk_enabled = powered;
 
@@ -714,8 +723,6 @@ static int bcm_common_probe(struct bcm_device *dev)
 {
 	dev->name = dev_name(dev->dev);
 
-	dev->clk = devm_clk_get(dev->dev, NULL);
-
 	dev->device_wakeup = devm_gpiod_get_optional(dev->dev,
 						     "device-wakeup",
 						     GPIOD_OUT_LOW);
@@ -815,6 +822,7 @@ static int bcm_platform_probe(struct platform_device *pdev)
 
 	dev->dev = &pdev->dev;
 
+	dev->lpo_clk = devm_clk_get(&pdev->dev, NULL);
 	dev->irq = platform_get_irq(pdev, 0);
 
 	if (has_acpi_companion(&pdev->dev))
