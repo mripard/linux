@@ -95,10 +95,10 @@
 		regulator-max-microvolt = <5000000>;
 	};
 
-	wifi_pwrseq: wifi_pwrseq {
-		compatible = "mmc-pwrseq-simple";
-		reset-gpios = <&r_pio 0 6 GPIO_ACTIVE_LOW>; /* PL06 */
-	};
+	/* wifi_pwrseq: wifi_pwrseq { */
+	/* 	compatible = "mmc-pwrseq-simple"; */
+	/* 	reset-gpios = <&r_pio 0 6 GPIO_ACTIVE_LOW>; /\* PL06 *\/ */
+	/* }; */
 };
 
 &codec {
@@ -159,15 +159,15 @@
 	status = "okay";
 };
 
-&mmc1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&mmc1_pins_a>;
-	vmmc-supply = <&reg_aldo1>;
-	mmc-pwrseq = <&wifi_pwrseq>;
-	bus-width = <4>;
-	non-removable;
-	status = "okay";
-};
+/* &mmc1 { */
+/* 	pinctrl-names = "default"; */
+/* 	pinctrl-0 = <&mmc1_pins_a>; */
+/* 	vmmc-supply = <&reg_aldo1>; */
+/* 	mmc-pwrseq = <&wifi_pwrseq>; */
+/* 	bus-width = <4>; */
+/* 	non-removable; */
+/* 	status = "okay"; */
+/* }; */
 
 &mmc2 {
 	pinctrl-names = "default";
