@@ -30,8 +30,10 @@
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/serdev.h>
 #include <linux/skbuff.h>
 #include <linux/tty.h>
 
@@ -63,6 +65,7 @@ struct bcm_device {
 	int			irq;
 	u8			irq_polarity;
 
+	struct hci_uart		s_hu;
 #ifdef CONFIG_PM
 	struct hci_uart		*hu;
 	bool			is_suspended; /* suspend/resume flag */
@@ -125,6 +128,9 @@ static int bcm_set_baudrate(struct hci_uart *hu, unsigned int speed)
 	}
 
 	kfree_skb(skb);
+
+	if (hu->serdev)
+		serdev_device_set_baudrate(hu->serdev, speed);
 
 	return 0;
 }
@@ -297,24 +303,32 @@ static int bcm_open(struct hci_uart *hu)
 
 	hu->priv = bcm;
 
-	if (!hu->tty && !hu->tty->dev)
-		goto out;
 
-	mutex_lock(&bcm_device_lock);
-	list_for_each(p, &bcm_device_list) {
-		struct bcm_device *l_dev = list_entry(p, struct bcm_device, list);
+	if (hu->serdev)
+		serdev_device_open(hu->serdev);
 
-		/* Retrieve saved bcm_device based on parent of the
-		 * device (saved during device probe) and parent of
-		 * tty device used by hci_uart
-		 */
-		if (hu->tty->dev->parent == l_dev->dev->parent) {
-			dev = l_dev;
-			break;
+	if (!hu->serdev) {
+		if (!hu->tty && !hu->tty->dev)
+			goto out;
+
+		mutex_lock(&bcm_device_lock);
+		list_for_each(p, &bcm_device_list) {
+			struct bcm_device *l_dev = list_entry(p, struct bcm_device,
+							      list);
+
+			/* Retrieve saved bcm_device based on parent of the
+			 * device (saved during device probe) and parent of
+			 * tty device used by hci_uart
+			 */
+			if (hu->tty->dev->parent == l_dev->dev->parent) {
+				dev = l_dev;
+				break;
+			}
 		}
+		mutex_unlock(&bcm_device_lock);
+	} else {
+		dev = serdev_device_get_drvdata(hu->serdev);
 	}
-
-	mutex_unlock(&bcm_device_lock);
 
 	if (!dev)
 		goto out;
@@ -356,6 +370,9 @@ static int bcm_close(struct hci_uart *hu)
 	}
 	mutex_unlock(&bcm_device_lock);
 
+	if (hu->serdev)
+		serdev_device_close(hu->serdev);
+
 	skb_queue_purge(&bcm->txq);
 	kfree_skb(bcm->rx_skb);
 	kfree(bcm);
@@ -387,6 +404,9 @@ static int bcm_setup(struct hci_uart *hu)
 
 	hu->hdev->set_diag = bcm_set_diag;
 	hu->hdev->set_bdaddr = btbcm_set_bdaddr;
+
+	if (hu->serdev)
+		serdev_device_set_flow_control(hu->serdev, true);
 
 	err = btbcm_initialize(hu->hdev, fw_name, sizeof(fw_name));
 	if (err)
@@ -811,6 +831,52 @@ static int bcm_acpi_probe(struct bcm_device *dev)
 }
 #endif /* CONFIG_ACPI */
 
+#ifdef CONFIG_SERIAL_DEV_BUS
+static const struct hci_uart_proto bcm_proto;
+
+static int bcm_serdev_probe(struct serdev_device *serdev)
+{
+	struct bcm_device *dev;
+	struct hci_uart *hu;
+	u32 max_speed = 4000000;
+	int ret;
+
+	dev = devm_kzalloc(&serdev->dev, sizeof(*dev), GFP_KERNEL);
+	if (!dev)
+		return -ENOMEM;
+	serdev_device_set_drvdata(serdev, dev);
+	dev->dev = &serdev->dev;
+	hu = &dev->s_hu;
+	hu->serdev = serdev;
+
+	/*
+	 * Both clocks are optional, we don't need to check for
+	 * errors, this will be done in the setup function
+	 */
+	dev->lpo_clk = devm_clk_get(&serdev->dev, "lpo");
+	dev->tcxo_clk = devm_clk_get(&serdev->dev, "tcxo");
+
+	ret = bcm_common_probe(dev);
+	if (ret)
+		return ret;
+
+	of_property_read_u32(serdev->dev.of_node, "max-speed", &max_speed);
+	hci_uart_set_speeds(hu, 115200, max_speed);
+
+	return hci_uart_register_device(hu, &bcm_proto);
+}
+
+static void bcm_serdev_remove(struct serdev_device *serdev)
+{
+	struct bcm_device *dev = serdev_device_get_drvdata(serdev);
+	struct hci_uart *hu = &dev->s_hu;
+	struct hci_dev *hdev = hu->hdev;
+
+	hci_unregister_dev(hdev);
+	hci_free_dev(hdev);
+}
+#endif /* CONFIG_SERIAL_DEV_BUS */
+
 static int bcm_platform_probe(struct platform_device *pdev)
 {
 	struct bcm_device *dev;
@@ -900,6 +966,14 @@ static const struct acpi_device_id bcm_acpi_match[] = {
 MODULE_DEVICE_TABLE(acpi, bcm_acpi_match);
 #endif
 
+#ifdef CONFIG_OF
+static const struct of_device_id bcm_of_match[] = {
+	{ .compatible	= "brcm,bcm20710" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, bcm_of_match);
+#endif
+
 /* Platform suspend and resume callbacks */
 static const struct dev_pm_ops bcm_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(bcm_suspend, bcm_resume)
@@ -916,9 +990,20 @@ static struct platform_driver bcm_platform_driver = {
 	},
 };
 
+static struct serdev_device_driver bcm_serdev_driver = {
+	.probe	= bcm_serdev_probe,
+	.remove	= bcm_serdev_remove,
+	.driver	= {
+		.name		= "hci_bcm",
+		.of_match_table	= of_match_ptr(bcm_of_match),
+		.pm		= &bcm_pm_ops,
+	},
+};
+
 int __init bcm_init(void)
 {
 	platform_driver_register(&bcm_platform_driver);
+	serdev_device_driver_register(&bcm_serdev_driver);
 
 	return hci_uart_register_proto(&bcm_proto);
 }
@@ -926,6 +1011,7 @@ int __init bcm_init(void)
 int __exit bcm_deinit(void)
 {
 	platform_driver_unregister(&bcm_platform_driver);
+	serdev_device_driver_unregister(&bcm_serdev_driver);
 
 	return hci_uart_unregister_proto(&bcm_proto);
 }
