@@ -274,6 +274,7 @@ static int bcm_set_diag(struct hci_dev *hdev, bool enable)
 
 static int bcm_open(struct hci_uart *hu)
 {
+	struct bcm_device *dev;
 	struct bcm_data *bcm;
 	struct list_head *p;
 
@@ -292,24 +293,31 @@ static int bcm_open(struct hci_uart *hu)
 
 	mutex_lock(&bcm_device_lock);
 	list_for_each(p, &bcm_device_list) {
-		struct bcm_device *dev = list_entry(p, struct bcm_device, list);
+		struct bcm_device *l_dev = list_entry(p, struct bcm_device, list);
 
 		/* Retrieve saved bcm_device based on parent of the
 		 * platform device (saved during device probe) and
 		 * parent of tty device used by hci_uart
 		 */
-		if (hu->tty->dev->parent == dev->pdev->dev.parent) {
-			bcm->dev = dev;
-			hu->init_speed = dev->init_speed;
-#ifdef CONFIG_PM
-			dev->hu = hu;
-#endif
-			bcm_gpio_set_power(bcm->dev, true);
+		if (hu->tty->dev->parent == l_dev->pdev->dev.parent) {
+			dev = l_dev;
 			break;
 		}
 	}
 
 	mutex_unlock(&bcm_device_lock);
+
+	if (!dev)
+		goto out;
+
+	bcm->dev = dev;
+	hu->init_speed = dev->init_speed;
+#ifdef CONFIG_PM
+	dev->hu = hu;
+#endif
+
+	bcm_gpio_set_power(bcm->dev, true);
+
 out:
 	return 0;
 }
