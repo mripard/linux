@@ -287,7 +287,7 @@ static int bcm_open(struct hci_uart *hu)
 
 	hu->priv = bcm;
 
-	if (!hu->tty->dev)
+	if (!hu->tty && !hu->tty->dev)
 		goto out;
 
 	mutex_lock(&bcm_device_lock);
