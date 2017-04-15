@@ -21,19 +21,19 @@
  *
  */
 
-#include <linux/kernel.h>
-#include <linux/errno.h>
-#include <linux/skbuff.h>
-#include <linux/firmware.h>
-#include <linux/module.h>
 #include <linux/acpi.h>
-#include <linux/platform_device.h>
 #include <linux/clk.h>
-#include <linux/gpio/consumer.h>
-#include <linux/tty.h>
-#include <linux/interrupt.h>
 #include <linux/dmi.h>
+#include <linux/errno.h>
+#include <linux/firmware.h>
+#include <linux/gpio/consumer.h>
+#include <linux/interrupt.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/skbuff.h>
+#include <linux/tty.h>
 
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
