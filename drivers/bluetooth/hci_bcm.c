@@ -148,7 +148,7 @@ static int bcm_gpio_set_power(struct bcm_device *dev, bool powered)
 	if (powered && !IS_ERR(dev->clk) && !dev->clk_enabled)
 		clk_prepare_enable(dev->clk);
 
-	gpiod_set_value(dev->shutdown, powered);
+	gpiod_set_value(dev->shutdown, !powered);
 	gpiod_set_value(dev->device_wakeup, powered);
 
 	if (!powered && !IS_ERR(dev->clk) && dev->clk_enabled)
@@ -622,7 +622,7 @@ unlock:
 #endif
 
 static const struct acpi_gpio_params int_last_device_wakeup_gpios = { 0, 0, false };
-static const struct acpi_gpio_params int_last_shutdown_gpios = { 1, 0, false };
+static const struct acpi_gpio_params int_last_shutdown_gpios = { 1, 0, true };
 static const struct acpi_gpio_params int_last_host_wakeup_gpios = { 2, 0, false };
 
 static const struct acpi_gpio_mapping acpi_bcm_int_last_gpios[] = {
@@ -634,7 +634,7 @@ static const struct acpi_gpio_mapping acpi_bcm_int_last_gpios[] = {
 
 static const struct acpi_gpio_params int_first_host_wakeup_gpios = { 0, 0, false };
 static const struct acpi_gpio_params int_first_device_wakeup_gpios = { 1, 0, false };
-static const struct acpi_gpio_params int_first_shutdown_gpios = { 2, 0, false };
+static const struct acpi_gpio_params int_first_shutdown_gpios = { 2, 0, true };
 
 static const struct acpi_gpio_mapping acpi_bcm_int_first_gpios[] = {
 	{ "device-wakeup-gpios", &int_first_device_wakeup_gpios, 1 },
@@ -717,7 +717,7 @@ static int bcm_platform_probe(struct bcm_device *dev)
 		return PTR_ERR(dev->device_wakeup);
 
 	dev->shutdown = devm_gpiod_get_optional(&pdev->dev, "shutdown",
-						GPIOD_OUT_LOW);
+						GPIOD_OUT_HIGH);
 	if (IS_ERR(dev->shutdown))
 		return PTR_ERR(dev->shutdown);
 
