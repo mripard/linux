@@ -54,6 +54,7 @@
 		i2c1 = &i2c1;
 		i2c2 = &i2c2;
 		serial0 = &uart0;
+		serial1 = &uart1;
 	};
 
 	chosen {
@@ -78,6 +79,13 @@
 			gpios = <&r_pio 0 3 GPIO_ACTIVE_LOW>;
 			default-state = "on";
 		};
+	};
+
+	reg_vcc3v3: vcc3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc3v3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
 	};
 
 	reg_vcc5v0: vcc5v0 {
@@ -297,6 +305,23 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart1_pins_a>, <&uart1_pins_cts_rts_a>;
 	status = "okay";
+
+	bluetooth {
+		compatible = "brcm,bcm20710";
+		clocks = <&rtc 1>, <&osc24M>;
+		clock-names = "lpo", "tcxo";
+		device-wakeup-gpios = <&r_pio 0 10 GPIO_ACTIVE_HIGH>;
+		host-wakeup-gpios = <&r_pio 0 9 GPIO_ACTIVE_HIGH>;
+		shutdown-gpios = <&r_pio 0 8 GPIO_ACTIVE_HIGH>;
+		reg-en-supply = <&reg_aldo1>;
+		/*
+		 * This is actually DLDO1 and DLDO2. We'd need to
+		 * control two regulators at the same time, but the
+		 * regulator framework doesn't allow us to at the
+		 * moment.
+		 */
+		vbat-supply = <&reg_vcc3v3>;
+	};
 };
 
 &usb_otg {
