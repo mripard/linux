@@ -702,7 +702,7 @@ static int bcm_resource(struct acpi_resource *ares, void *data)
 }
 #endif /* CONFIG_ACPI */
 
-static int bcm_platform_probe(struct bcm_device *dev)
+static int bcm_common_probe(struct bcm_device *dev)
 {
 	struct platform_device *pdev = dev->pdev;
 
@@ -767,7 +767,7 @@ static int bcm_acpi_probe(struct bcm_device *dev)
 	if (ret)
 		return ret;
 
-	ret = bcm_platform_probe(dev);
+	ret = bcm_common_probe(dev);
 	if (ret)
 		return ret;
 
@@ -794,7 +794,7 @@ static int bcm_acpi_probe(struct bcm_device *dev)
 }
 #endif /* CONFIG_ACPI */
 
-static int bcm_probe(struct platform_device *pdev)
+static int bcm_platform_probe(struct platform_device *pdev)
 {
 	struct bcm_device *dev;
 	int ret;
@@ -808,7 +808,7 @@ static int bcm_probe(struct platform_device *pdev)
 	if (has_acpi_companion(&pdev->dev))
 		ret = bcm_acpi_probe(dev);
 	else
-		ret = bcm_platform_probe(dev);
+		ret = bcm_common_probe(dev);
 	if (ret)
 		return ret;
 
@@ -826,7 +826,7 @@ static int bcm_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int bcm_remove(struct platform_device *pdev)
+static int bcm_platform_remove(struct platform_device *pdev)
 {
 	struct bcm_device *dev = platform_get_drvdata(pdev);
 
@@ -886,9 +886,9 @@ static const struct dev_pm_ops bcm_pm_ops = {
 	SET_RUNTIME_PM_OPS(bcm_suspend_device, bcm_resume_device, NULL)
 };
 
-static struct platform_driver bcm_driver = {
-	.probe = bcm_probe,
-	.remove = bcm_remove,
+static struct platform_driver bcm_platform_driver = {
+	.probe	= bcm_platform_probe,
+	.remove	= bcm_platform_remove,
 	.driver = {
 		.name = "hci_bcm",
 		.acpi_match_table = ACPI_PTR(bcm_acpi_match),
@@ -898,14 +898,14 @@ static struct platform_driver bcm_driver = {
 
 int __init bcm_init(void)
 {
-	platform_driver_register(&bcm_driver);
+	platform_driver_register(&bcm_platform_driver);
 
 	return hci_uart_register_proto(&bcm_proto);
 }
 
 int __exit bcm_deinit(void)
 {
-	platform_driver_unregister(&bcm_driver);
+	platform_driver_unregister(&bcm_platform_driver);
 
 	return hci_uart_unregister_proto(&bcm_proto);
 }
