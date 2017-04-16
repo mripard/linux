@@ -310,9 +310,9 @@
 		compatible = "brcm,bcm20710";
 		clocks = <&rtc 1>, <&osc24M>;
 		clock-names = "lpo", "tcxo";
-		device-wakeup-gpios = <&r_pio 0 10 GPIO_ACTIVE_HIGH>;
+		device-wakeup-gpios = <&r_pio 0 10 GPIO_ACTIVE_LOW>;
 		host-wakeup-gpios = <&r_pio 0 9 GPIO_ACTIVE_HIGH>;
-		shutdown-gpios = <&r_pio 0 8 GPIO_ACTIVE_HIGH>;
+		shutdown-gpios = <&r_pio 0 8 GPIO_ACTIVE_LOW>;
 		reg-en-supply = <&reg_aldo1>;
 		/*
 		 * This is actually DLDO1 and DLDO2. We'd need to
@@ -321,6 +321,7 @@
 		 * moment.
 		 */
 		vbat-supply = <&reg_vcc3v3>;
+		max-speed = <115200>;
 	};
 };
 
