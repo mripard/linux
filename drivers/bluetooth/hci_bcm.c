@@ -772,7 +772,7 @@ static int bcm_common_probe(struct bcm_device *dev)
 		dev->irq = gpiod_to_irq(gpio);
 	}
 
-	dev_info(dev->->dev, "BCM irq: %d\n", dev->irq);
+	dev_info(dev->dev, "BCM irq: %d\n", dev->irq);
 
 	/* Make sure at-least one of the GPIO is defined and that
 	 * a name is specified for this instance
