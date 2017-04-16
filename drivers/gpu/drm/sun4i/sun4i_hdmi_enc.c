@@ -352,6 +352,7 @@ static int sun4i_hdmi_probe(struct platform_device *pdev)
 {
 	struct sun4i_hdmi *hdmi;
 	struct resource *res;
+	u32 reg;
 	int ret;
 
 	hdmi = devm_kzalloc(&pdev->dev, sizeof(*hdmi), GFP_KERNEL);
@@ -406,14 +407,22 @@ static int sun4i_hdmi_probe(struct platform_device *pdev)
 	writel(SUN4I_HDMI_PAD_CTRL0, hdmi->base + SUN4I_HDMI_PAD_CTRL0_REG);
 
 	/* TODO: defines */
-	writel((6 << 3) | (2 << 10) | BIT(14) | BIT(15) |
-	       BIT(19) | BIT(20) | BIT(22) | BIT(23),
-	       hdmi->base + SUN4I_HDMI_PAD_CTRL1_REG);
+	/*
+	 * We can't just initialize the register there, we need to
+	 * protect the clock bits that have already been read out and
+	 * cached by the clock framework.
+	 */
+	reg = readl(hdmi->base + SUN4I_HDMI_PAD_CTRL1_REG);
+	reg = (6 << 3) | (2 << 10) | BIT(14) | BIT(15) | BIT(19) | BIT(20) |
+		BIT(22) | BIT(23) | (reg & SUN4I_HDMI_PAD_CTRL1_HALVE_CLK);
+	writel(reg, hdmi->base + SUN4I_HDMI_PAD_CTRL1_REG);
 
 	/* TODO: defines */
-	writel((8 << 0) | (7 << 8) | (239 << 12) | (7 << 17) | (4 << 20) |
-	       BIT(25) | BIT(27) | BIT(28) | BIT(29) | BIT(30) | BIT(31),
-	       hdmi->base + SUN4I_HDMI_PLL_CTRL_REG);
+	reg = readl(hdmi->base + SUN4I_HDMI_PLL_CTRL_REG);
+	reg = (8 << 0) | (7 << 8) | (239 << 12) | (7 << 17) | (4 << 20) |
+		BIT(25) | BIT(27) | BIT(28) | BIT(29) | BIT(30) | BIT(31) |
+		(reg & SUN4I_HDMI_PLL_CTRL_DIV_MASK);
+	writel(reg, hdmi->base + SUN4I_HDMI_PLL_CTRL_REG);
 
 	ret = sun4i_ddc_create(hdmi, hdmi->tmds_clk);
 	if (ret) {
