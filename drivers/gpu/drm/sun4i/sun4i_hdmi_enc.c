@@ -158,13 +158,13 @@ static void sun4i_hdmi_mode_set(struct drm_encoder *encoder,
 	writel(val, hdmi->base + SUN4I_HDMI_VID_TIMING_POL_REG);
 }
 
-static struct drm_encoder_helper_funcs sun4i_hdmi_helper_funcs = {
+static const struct drm_encoder_helper_funcs sun4i_hdmi_helper_funcs = {
 	.disable	= sun4i_hdmi_disable,
 	.enable		= sun4i_hdmi_enable,
 	.mode_set	= sun4i_hdmi_mode_set,
 };
 
-static struct drm_encoder_funcs sun4i_hdmi_funcs = {
+static const struct drm_encoder_funcs sun4i_hdmi_funcs = {
 	.destroy	= drm_encoder_cleanup,
 };
 
@@ -232,7 +232,7 @@ static int sun4i_hdmi_get_modes(struct drm_connector *connector)
 	unsigned long reg;
 	struct edid *edid;
 	int ret;
-	
+
 	/* Reset i2c controller */
 	writel(SUN4I_HDMI_DDC_CTRL_ENABLE | SUN4I_HDMI_DDC_CTRL_RESET,
 	       hdmi->base + SUN4I_HDMI_DDC_CTRL_REG);
@@ -262,7 +262,7 @@ static int sun4i_hdmi_get_modes(struct drm_connector *connector)
 	return ret;
 }
 
-static struct drm_connector_helper_funcs sun4i_hdmi_connector_helper_funcs = {
+static const struct drm_connector_helper_funcs sun4i_hdmi_connector_helper_funcs = {
 	.get_modes	= sun4i_hdmi_get_modes,
 };
 
@@ -280,7 +280,7 @@ sun4i_hdmi_connector_detect(struct drm_connector *connector, bool force)
 	return connector_status_connected;
 }
 
-static struct drm_connector_funcs sun4i_hdmi_connector_funcs = {
+static const struct drm_connector_funcs sun4i_hdmi_connector_funcs = {
 	.dpms			= drm_atomic_helper_connector_dpms,
 	.detect			= sun4i_hdmi_connector_detect,
 	.fill_modes		= drm_helper_probe_single_connector_modes,
@@ -343,7 +343,7 @@ static void sun4i_hdmi_unbind(struct device *dev, struct device *master,
 	drm_encoder_cleanup(&hdmi->encoder);
 }
 
-static struct component_ops sun4i_hdmi_ops = {
+static const struct component_ops sun4i_hdmi_ops = {
 	.bind	= sun4i_hdmi_bind,
 	.unbind	= sun4i_hdmi_unbind,
 };
@@ -403,7 +403,7 @@ static int sun4i_hdmi_probe(struct platform_device *pdev)
 	writel(SUN4I_HDMI_CTRL_ENABLE, hdmi->base + SUN4I_HDMI_CTRL_REG);
 
 #define SUN4I_HDMI_PAD_CTRL0 0xfe800000
-	
+
 	writel(SUN4I_HDMI_PAD_CTRL0, hdmi->base + SUN4I_HDMI_PAD_CTRL0_REG);
 
 	/* TODO: defines */
