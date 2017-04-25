@@ -57,6 +57,48 @@ void ccu_mux_helper_adjust_parent_for_prediv(struct ccu_common *common,
 	*parent_rate = *parent_rate / prediv;
 }
 
+void ccu_mux_helper_readjust_parent_for_prediv(struct ccu_common *common,
+					       struct ccu_mux_internal *cm,
+					       int parent_index,
+					       unsigned long *parent_rate)
+{
+	u16 prediv = 1;
+	u32 reg;
+	int i;
+
+	if (!((common->features & CCU_FEATURE_FIXED_PREDIV) ||
+	      (common->features & CCU_FEATURE_VARIABLE_PREDIV) ||
+	      (common->features & CCU_FEATURE_ALL_PREDIV)))
+		return;
+
+	if (common->features & CCU_FEATURE_ALL_PREDIV) {
+		*parent_rate = *parent_rate * common->prediv;
+		return;
+	}
+
+	reg = readl(common->base + common->reg);
+	if (parent_index < 0) {
+		parent_index = reg >> cm->shift;
+		parent_index &= (1 << cm->width) - 1;
+	}
+
+	if (common->features & CCU_FEATURE_FIXED_PREDIV)
+		for (i = 0; i < cm->n_predivs; i++)
+			if (parent_index == cm->fixed_predivs[i].index)
+				prediv = cm->fixed_predivs[i].div;
+
+	if (common->features & CCU_FEATURE_VARIABLE_PREDIV)
+		if (parent_index == cm->variable_prediv.index) {
+			u8 div;
+
+			div = reg >> cm->variable_prediv.shift;
+			div &= (1 << cm->variable_prediv.width) - 1;
+			prediv = div + 1;
+		}
+
+	*parent_rate = *parent_rate * prediv;
+}
+
 int ccu_mux_helper_determine_rate(struct ccu_common *common,
 				  struct ccu_mux_internal *cm,
 				  struct clk_rate_request *req,
@@ -100,16 +142,19 @@ int ccu_mux_helper_determine_rate(struct ccu_common *common,
 							&adj_parent_rate);
 
 		tmp_rate = round(cm, parent, &adj_parent_rate, req->rate, data);
+		ccu_mux_helper_readjust_parent_for_prediv(common, cm, i,
+							  &adj_parent_rate);
+		
 		if (tmp_rate == req->rate) {
 			best_parent = parent;
-			best_parent_rate = parent_rate;
+			best_parent_rate = adj_parent_rate;
 			best_rate = tmp_rate;
 			goto out;
 		}
 
 		if ((req->rate - tmp_rate) < (req->rate - best_rate)) {
 			best_rate = tmp_rate;
-			best_parent_rate = parent_rate;
+			best_parent_rate = adj_parent_rate;
 			best_parent = parent;
 		}
 	}
