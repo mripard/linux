@@ -19,7 +19,6 @@
 #include <linux/clk.h>
 #include <linux/component.h>
 #include <linux/iopoll.h>
-#include <linux/of_address.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
 
@@ -320,7 +319,7 @@ static int sun4i_hdmi_bind(struct device *dev, struct device *master,
 				 DRM_MODE_CONNECTOR_HDMIA);
 	if (ret) {
 		dev_err(dev,
-			"Couldn't initialise the Composite connector\n");
+			"Couldn't initialise the HDMI connector\n");
 		goto err_cleanup_connector;
 	}
 	hdmi->connector.interlace_allowed = true;
