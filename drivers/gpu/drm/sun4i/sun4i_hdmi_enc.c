@@ -290,14 +290,92 @@ static const struct drm_connector_funcs sun4i_hdmi_connector_funcs = {
 };
 
 static int sun4i_hdmi_bind(struct device *dev, struct device *master,
-			 void *data)
+			   void *data)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct drm_device *drm = data;
 	struct sun4i_drv *drv = drm->dev_private;
-	struct sun4i_hdmi *hdmi = dev_get_drvdata(dev);
+	struct sun4i_hdmi *hdmi;
+	struct resource *res;
+	u32 reg;
 	int ret;
 
+	hdmi = devm_kzalloc(dev, sizeof(*hdmi), GFP_KERNEL);
+	if (!hdmi)
+		return -ENOMEM;
+	dev_set_drvdata(dev, hdmi);
+	hdmi->dev = dev;
 	hdmi->drv = drv;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	hdmi->base = devm_ioremap_resource(dev, res);
+	if (IS_ERR(hdmi->base)) {
+		dev_err(dev, "Couldn't map the HDMI encoder registers\n");
+		return PTR_ERR(hdmi->base);
+	}
+
+	hdmi->bus_clk = devm_clk_get(dev, "ahb");
+	if (IS_ERR(hdmi->bus_clk)) {
+		dev_err(dev, "Couldn't get the HDMI bus clock\n");
+		return PTR_ERR(hdmi->bus_clk);
+	}
+	clk_prepare_enable(hdmi->bus_clk);
+
+	hdmi->mod_clk = devm_clk_get(dev, "mod");
+	if (IS_ERR(hdmi->mod_clk)) {
+		dev_err(dev, "Couldn't get the HDMI mod clock\n");
+		return PTR_ERR(hdmi->mod_clk);
+	}
+	clk_prepare_enable(hdmi->mod_clk);
+
+	hdmi->pll0_clk = devm_clk_get(dev, "pll-0");
+	if (IS_ERR(hdmi->pll0_clk)) {
+		dev_err(dev, "Couldn't get the HDMI PLL 0 clock\n");
+		return PTR_ERR(hdmi->pll0_clk);
+	}
+
+	hdmi->pll1_clk = devm_clk_get(dev, "pll-1");
+	if (IS_ERR(hdmi->pll1_clk)) {
+		dev_err(dev, "Couldn't get the HDMI PLL 1 clock\n");
+		return PTR_ERR(hdmi->pll1_clk);
+	}
+
+	ret = sun4i_tmds_create(hdmi);
+	if (ret) {
+		dev_err(dev, "Couldn't create the TMDS clock\n");
+		return ret;
+	}
+
+	writel(SUN4I_HDMI_CTRL_ENABLE, hdmi->base + SUN4I_HDMI_CTRL_REG);
+
+#define SUN4I_HDMI_PAD_CTRL0 0xfe800000
+
+	writel(SUN4I_HDMI_PAD_CTRL0, hdmi->base + SUN4I_HDMI_PAD_CTRL0_REG);
+
+	/* TODO: defines */
+	/*
+	 * We can't just initialize the register there, we need to
+	 * protect the clock bits that have already been read out and
+	 * cached by the clock framework.
+	 */
+	reg = readl(hdmi->base + SUN4I_HDMI_PAD_CTRL1_REG);
+	reg = (6 << 3) | (2 << 10) | BIT(14) | BIT(15) | BIT(19) | BIT(20) |
+		BIT(22) | BIT(23) | (reg & SUN4I_HDMI_PAD_CTRL1_HALVE_CLK);
+	writel(reg, hdmi->base + SUN4I_HDMI_PAD_CTRL1_REG);
+
+	/* TODO: defines */
+	reg = readl(hdmi->base + SUN4I_HDMI_PLL_CTRL_REG);
+	reg = (8 << 0) | (7 << 8) | (239 << 12) | (7 << 17) | (4 << 20) |
+		BIT(25) | BIT(27) | BIT(28) | BIT(29) | BIT(30) | BIT(31) |
+		(reg & SUN4I_HDMI_PLL_CTRL_DIV_MASK);
+	writel(reg, hdmi->base + SUN4I_HDMI_PLL_CTRL_REG);
+
+	ret = sun4i_ddc_create(hdmi, hdmi->tmds_clk);
+	if (ret) {
+		dev_err(dev, "Couldn't create the DDC clock\n");
+		return ret;
+	}
+
 	drm_encoder_helper_add(&hdmi->encoder,
 			       &sun4i_hdmi_helper_funcs);
 	ret = drm_encoder_init(drm,
@@ -348,86 +426,6 @@ static const struct component_ops sun4i_hdmi_ops = {
 
 static int sun4i_hdmi_probe(struct platform_device *pdev)
 {
-	struct sun4i_hdmi *hdmi;
-	struct resource *res;
-	u32 reg;
-	int ret;
-
-	hdmi = devm_kzalloc(&pdev->dev, sizeof(*hdmi), GFP_KERNEL);
-	if (!hdmi)
-		return -ENOMEM;
-	dev_set_drvdata(&pdev->dev, hdmi);
-	hdmi->dev = &pdev->dev;
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	hdmi->base = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(hdmi->base)) {
-		dev_err(&pdev->dev, "Couldn't map the HDMI encoder registers\n");
-		return PTR_ERR(hdmi->base);
-	}
-
-	hdmi->bus_clk = devm_clk_get(&pdev->dev, "ahb");
-	if (IS_ERR(hdmi->bus_clk)) {
-		dev_err(&pdev->dev, "Couldn't get the HDMI bus clock\n");
-		return PTR_ERR(hdmi->bus_clk);
-	}
-	clk_prepare_enable(hdmi->bus_clk);
-
-	hdmi->mod_clk = devm_clk_get(&pdev->dev, "mod");
-	if (IS_ERR(hdmi->mod_clk)) {
-		dev_err(&pdev->dev, "Couldn't get the HDMI mod clock\n");
-		return PTR_ERR(hdmi->mod_clk);
-	}
-	clk_prepare_enable(hdmi->mod_clk);
-
-	hdmi->pll0_clk = devm_clk_get(&pdev->dev, "pll-0");
-	if (IS_ERR(hdmi->pll0_clk)) {
-		dev_err(&pdev->dev, "Couldn't get the HDMI PLL 0 clock\n");
-		return PTR_ERR(hdmi->pll0_clk);
-	}
-
-	hdmi->pll1_clk = devm_clk_get(&pdev->dev, "pll-1");
-	if (IS_ERR(hdmi->pll1_clk)) {
-		dev_err(&pdev->dev, "Couldn't get the HDMI PLL 1 clock\n");
-		return PTR_ERR(hdmi->pll1_clk);
-	}
-
-	ret = sun4i_tmds_create(hdmi);
-	if (ret) {
-		dev_err(&pdev->dev, "Couldn't create the TMDS clock\n");
-		return ret;
-	}
-
-	writel(SUN4I_HDMI_CTRL_ENABLE, hdmi->base + SUN4I_HDMI_CTRL_REG);
-
-#define SUN4I_HDMI_PAD_CTRL0 0xfe800000
-
-	writel(SUN4I_HDMI_PAD_CTRL0, hdmi->base + SUN4I_HDMI_PAD_CTRL0_REG);
-
-	/* TODO: defines */
-	/*
-	 * We can't just initialize the register there, we need to
-	 * protect the clock bits that have already been read out and
-	 * cached by the clock framework.
-	 */
-	reg = readl(hdmi->base + SUN4I_HDMI_PAD_CTRL1_REG);
-	reg = (6 << 3) | (2 << 10) | BIT(14) | BIT(15) | BIT(19) | BIT(20) |
-		BIT(22) | BIT(23) | (reg & SUN4I_HDMI_PAD_CTRL1_HALVE_CLK);
-	writel(reg, hdmi->base + SUN4I_HDMI_PAD_CTRL1_REG);
-
-	/* TODO: defines */
-	reg = readl(hdmi->base + SUN4I_HDMI_PLL_CTRL_REG);
-	reg = (8 << 0) | (7 << 8) | (239 << 12) | (7 << 17) | (4 << 20) |
-		BIT(25) | BIT(27) | BIT(28) | BIT(29) | BIT(30) | BIT(31) |
-		(reg & SUN4I_HDMI_PLL_CTRL_DIV_MASK);
-	writel(reg, hdmi->base + SUN4I_HDMI_PLL_CTRL_REG);
-
-	ret = sun4i_ddc_create(hdmi, hdmi->tmds_clk);
-	if (ret) {
-		dev_err(&pdev->dev, "Couldn't create the DDC clock\n");
-		return ret;
-	}
-
 	return component_add(&pdev->dev, &sun4i_hdmi_ops);
 }
 
