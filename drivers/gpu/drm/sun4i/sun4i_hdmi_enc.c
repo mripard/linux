@@ -180,7 +180,7 @@ static int sun4i_hdmi_read_sub_block(struct sun4i_hdmi *hdmi,
 	writel(SUN4I_HDMI_DDC_ADDR_SEGMENT(offset >> 8) |
 	       SUN4I_HDMI_DDC_ADDR_EDDC(0x60) |
 	       SUN4I_HDMI_DDC_ADDR_OFFSET(offset) |
-	       SUN4I_HDMI_DDC_ADDR_SLAVE(0x50),
+	       SUN4I_HDMI_DDC_ADDR_SLAVE(DDC_ADDR),
 	       hdmi->base + SUN4I_HDMI_DDC_ADDR_REG);
 
 	writel(count, hdmi->base + SUN4I_HDMI_DDC_BYTE_COUNT_REG);
