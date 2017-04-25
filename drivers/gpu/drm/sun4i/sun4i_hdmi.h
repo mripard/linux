@@ -106,11 +106,15 @@ struct sun4i_hdmi {
 	struct device		*dev;
 
 	void __iomem		*base;
+
+	/* Parent clocks */
 	struct clk		*bus_clk;
-	struct clk		*ddc_clk;
 	struct clk		*mod_clk;
 	struct clk		*pll0_clk;
 	struct clk		*pll1_clk;
+
+	/* And the clocks we create */
+	struct clk		*ddc_clk;
 	struct clk		*tmds_clk;
 
 	struct sun4i_drv	*drv;
