@@ -322,7 +322,6 @@ static int sun4i_hdmi_bind(struct device *dev, struct device *master,
 			"Couldn't initialise the HDMI connector\n");
 		goto err_cleanup_connector;
 	}
-	hdmi->connector.interlace_allowed = true;
 
 	drm_mode_connector_attach_encoder(&hdmi->connector, &hdmi->encoder);
 
