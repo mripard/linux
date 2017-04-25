@@ -73,8 +73,6 @@ static int sun4i_tmds_determine_rate(struct clk_hw *hw,
 	int best_div = 1, best_half = 1;
 	int i, j;
 
-	printk("%s %d rate %lu\n", __func__, __LINE__, rate);
-
 	/*
 	 * We only consider PLL3, since the TCON is very likely to be
 	 * clocked from it, and to have the same rate than our HDMI
@@ -112,11 +110,6 @@ out:
 	req->best_parent_rate = best_parent;
 	req->best_parent_hw = parent;
 
-	printk("%s %d rate %lu parent rate %lu (%s) div %d half %d\n",
-	       __func__, __LINE__, req->rate, req->best_parent_rate,
-	       clk_hw_get_name(req->best_parent_hw),
-	       best_div, best_half);
-
 	return 0;
 }
 
@@ -147,10 +140,6 @@ static int sun4i_tmds_set_rate(struct clk_hw *hw, unsigned long rate,
 	u8 div;
 
 	sun4i_tmds_calc_divider(rate, parent_rate, &div, &half);
-
-	printk("%s %d rate %lu parent rate %lu div %d half %s\n",
-	       __func__, __LINE__, rate, parent_rate, div,
-	       half ? "yes" : "no");
 
 	reg = readl(tmds->hdmi->base + SUN4I_HDMI_PAD_CTRL1_REG);
 	reg &= ~SUN4I_HDMI_PAD_CTRL1_HALVE_CLK;
