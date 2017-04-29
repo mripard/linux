@@ -29,5 +29,28 @@ Let me know what you think!
 Maxime
 
 Changes from v1:
-  - Fixed a typo in the CCU header
+  - Fixed typos in the CCU header and the HDMI code
   - Reintroduced the comment for the backporch timings
+  - Renamed the hdmi node to hdmi, instead of hdmi0
+  - Added support for hdmi-connector
+  - Added a separate Kconfig option for the HDMI support
+  - Changed the TCON muxing configuration for an explicit call in the
+    TCON's "clients"
+  - Fixed the initialisation sequence that was clearing the clocks bits
+  - Constified the HDMI's structures and removed whitespaces errors
+  - Fixed an issue in the sunxi-ng code that was not reporting the proper
+    parent clock rate if it was modified
+  - Removed unused headers
+  - Removed CLK_SET_RATE_PARENT for the DDC clock
+  - Used the DDC address defines
+  - Removed the interlace flag that wasn't supported at the moment
+  - Moved most of the HDMI encoder init to the bind function like we do for
+    the other encoders
+  - Switched to drm_of_find_possible_crtcs
+  - Removed the extra printk that were still in my code
+  - Rebased on top of linux-next
+  - Removed the patch changing the divider_round_rate prototype to
+    introduce a new function instead that takes the parent clock to
+    evaluate
+  - Added a clk_set_rate for the hdmi module clock
+  - Fixed the V_TOTAL TCON ch0 calculation to be consistent with ch1's
