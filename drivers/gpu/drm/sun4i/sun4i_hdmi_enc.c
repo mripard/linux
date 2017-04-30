@@ -14,6 +14,7 @@
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_edid.h>
 #include <drm/drm_encoder.h>
+#include <drm/drm_of.h>
 #include <drm/drm_panel.h>
 
 #include <linux/clk.h>
@@ -174,17 +175,23 @@ static int sun4i_hdmi_read_sub_block(struct sun4i_hdmi *hdmi,
 	unsigned long reg;
 	int i;
 
-	reg = readl(hdmi->base + SUN4I_HDMI_DDC_FIFO_CTRL_REG);
-	writel(reg | SUN4I_HDMI_DDC_FIFO_CTRL_CLEAR,
-	       hdmi->base + SUN4I_HDMI_DDC_FIFO_CTRL_REG);
+	reg = readl(hdmi->base + SUN4I_HDMI_DDC_CTRL_REG);
+	reg &= ~SUN4I_HDMI_DDC_CTRL_FIFO_DIR_MASK;
+	writel(reg | SUN4I_HDMI_DDC_CTRL_FIFO_DIR_READ,
+	       hdmi->base + SUN4I_HDMI_DDC_CTRL_REG);
+
 	writel(SUN4I_HDMI_DDC_ADDR_SEGMENT(offset >> 8) |
 	       SUN4I_HDMI_DDC_ADDR_EDDC(0x60) |
 	       SUN4I_HDMI_DDC_ADDR_OFFSET(offset) |
 	       SUN4I_HDMI_DDC_ADDR_SLAVE(DDC_ADDR),
 	       hdmi->base + SUN4I_HDMI_DDC_ADDR_REG);
 
+	reg = readl(hdmi->base + SUN4I_HDMI_DDC_FIFO_CTRL_REG);
+	writel(reg | SUN4I_HDMI_DDC_FIFO_CTRL_CLEAR,
+	       hdmi->base + SUN4I_HDMI_DDC_FIFO_CTRL_REG);
+
 	writel(count, hdmi->base + SUN4I_HDMI_DDC_BYTE_COUNT_REG);
-	writel(SUN4I_HDMI_DDC_CMD_EXPLICIT_EDDC_READ,
+	writel(SUN4I_HDMI_DDC_CMD_EXPLICIT_OFFSET_READ,
 	       hdmi->base + SUN4I_HDMI_DDC_CMD_REG);
 
 	reg = readl(hdmi->base + SUN4I_HDMI_DDC_CTRL_REG);
@@ -194,6 +201,10 @@ static int sun4i_hdmi_read_sub_block(struct sun4i_hdmi *hdmi,
 	if (readl_poll_timeout(hdmi->base + SUN4I_HDMI_DDC_CTRL_REG, reg,
 			       !(reg & SUN4I_HDMI_DDC_CTRL_START_CMD),
 			       100, 2000))
+		return -ETIMEDOUT;
+
+	reg = readl(hdmi->base + SUN4I_HDMI_DDC_INT_ST_REG);
+	if (!(reg & SUN4I_HDMI_DDC_INT_ST_TX_DONE))
 		return -EIO;
 
 	for (i = 0; i < count; i++)
@@ -206,7 +217,7 @@ static int sun4i_hdmi_read_edid_block(void *data, u8 *buf, unsigned int blk,
 				      size_t length)
 {
 	struct sun4i_hdmi *hdmi = data;
-	int retry = 2, i;
+	int retry = 4, i;
 
 	do {
 		for (i = 0; i < length; i += SUN4I_HDMI_DDC_FIFO_SIZE) {
@@ -233,6 +244,7 @@ static int sun4i_hdmi_get_modes(struct drm_connector *connector)
 	int ret;
 
 	/* Reset i2c controller */
+	writel(0, hdmi->base + SUN4I_HDMI_DDC_FIFO_CTRL_REG);
 	writel(SUN4I_HDMI_DDC_CTRL_ENABLE | SUN4I_HDMI_DDC_CTRL_RESET,
 	       hdmi->base + SUN4I_HDMI_DDC_CTRL_REG);
 	if (readl_poll_timeout(hdmi->base + SUN4I_HDMI_DDC_CTRL_REG, reg,
@@ -240,11 +252,11 @@ static int sun4i_hdmi_get_modes(struct drm_connector *connector)
 			       100, 2000))
 		return -EIO;
 
+	clk_set_rate(hdmi->ddc_clk, 100000);
+
 	writel(SUN4I_HDMI_DDC_LINE_CTRL_SDA_ENABLE |
 	       SUN4I_HDMI_DDC_LINE_CTRL_SCL_ENABLE,
 	       hdmi->base + SUN4I_HDMI_DDC_LINE_CTRL_REG);
-
-	clk_set_rate(hdmi->ddc_clk, 100000);
 
 	edid = drm_do_get_edid(connector, sun4i_hdmi_read_edid_block, hdmi);
 	if (!edid)
