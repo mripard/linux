@@ -30,9 +30,11 @@ static void sun4i_de_output_poll_changed(struct drm_device *drm)
 static int sun4i_de_atomic_check(struct drm_device *drm,
 				 struct drm_atomic_state *state)
 {
+	struct drm_plane_state *plane_state;
 	struct drm_plane *plane_array[SUN4I_BACKEND_NUM_LAYERS];
 	struct drm_plane *plane;
 	unsigned int num_alpha_planes = 0;
+	unsigned int num_yuv_planes = 0;
 	unsigned int num_planes = 0;
 	unsigned int current_pipe = 0;
 	int i = 0;
@@ -66,6 +68,11 @@ static int sun4i_de_atomic_check(struct drm_device *drm,
 		if (sun4i_backend_format_has_alpha(fb->format->format))
 			num_alpha_planes++;
 
+		if (sun4i_backend_format_is_yuv(fb->format->format)) {
+			DRM_DEBUG_DRIVER("Plane FB format is YUV\n");
+			num_yuv_planes++;
+		}
+
 		DRM_DEBUG_DRIVER("Plane zpos is %d\n",
 				 plane_state->normalized_zpos);
 
@@ -73,6 +80,12 @@ static int sun4i_de_atomic_check(struct drm_device *drm,
                 plane_array[plane_state->normalized_zpos] = plane;
 
 		num_planes++;
+	}
+
+	/* We can only have a single YUV plane at a time */
+	if (num_yuv_planes > SUN4I_BACKEND_NUM_YUV_PLANES) {
+		DRM_DEBUG_DRIVER("Too many planes with YUV, rejecting...\n");
+		return -EINVAL;
 	}
 
 	/*

@@ -71,6 +71,7 @@
 #define SUN4I_BACKEND_ATTCTL_REG0_LAY_PIPESEL(x)		((x) << 15)
 #define SUN4I_BACKEND_ATTCTL_REG0_LAY_PRISEL_MASK	GENMASK(11, 10)
 #define SUN4I_BACKEND_ATTCTL_REG0_LAY_PRISEL(x)			((x) << 10)
+#define SUN4I_BACKEND_ATTCTL_REG0_LAY_YUVEN		BIT(2)
 
 #define SUN4I_BACKEND_ATTCTL_REG1(l)		(0x8a0 + (0x4 * (l)))
 #define SUN4I_BACKEND_ATTCTL_REG1_LAY_HSCAFCT		GENMASK(15, 14)
@@ -108,7 +109,23 @@
 #define SUN4I_BACKEND_SPREN_REG			0x900
 #define SUN4I_BACKEND_SPRFMTCTL_REG		0x908
 #define SUN4I_BACKEND_SPRALPHACTL_REG		0x90c
+
 #define SUN4I_BACKEND_IYUVCTL_REG		0x920
+#define SUN4I_BACKEND_IYUVCTL_FBFMT_MASK		GENMASK(14, 12)
+#define SUN4I_BACKEND_IYUVCTL_FBFMT_PACKED_YUV444		(4 << 12)
+#define SUN4I_BACKEND_IYUVCTL_FBFMT_PACKED_YUV422		(3 << 12)
+#define SUN4I_BACKEND_IYUVCTL_FBFMT_PLANAR_YUV444		(2 << 12)
+#define SUN4I_BACKEND_IYUVCTL_FBFMT_PLANAR_YUV222		(1 << 12)
+#define SUN4I_BACKEND_IYUVCTL_FBFMT_PLANAR_YUV111		(0 << 12)
+#define SUN4I_BACKEND_IYUVCTL_FBPS_MASK			GENMASK(9, 8)
+#define SUN4I_BACKEND_IYUVCTL_FBPS_YVYU				(3 << 8)
+#define SUN4I_BACKEND_IYUVCTL_FBPS_VYUY				(2 << 8)
+#define SUN4I_BACKEND_IYUVCTL_FBPS_YUYV				(1 << 8)
+#define SUN4I_BACKEND_IYUVCTL_FBPS_UYVY				(0 << 8)
+#define SUN4I_BACKEND_IYUVCTL_FBPS_VUYA				(1 << 8)
+#define SUN4I_BACKEND_IYUVCTL_FBPS_AYUV				(0 << 8)
+#define SUN4I_BACKEND_IYUVCTL_EN			BIT(0)
+
 #define SUN4I_BACKEND_IYUVADD_REG(c)		(0x930 + (0x4 * (c)))
 
 #define SUN4I_BACKEND_IYUVLINEWIDTH_REG(c)	(0x940 + (0x4 * (c)))
@@ -146,6 +163,7 @@
 
 #define SUN4I_BACKEND_NUM_LAYERS		4
 #define SUN4I_BACKEND_NUM_ALPHA_LAYERS		1
+#define SUN4I_BACKEND_NUM_YUV_PLANES		1
 
 struct sun4i_backend {
 	struct sunxi_engine	engine;
@@ -179,6 +197,50 @@ static inline bool sun4i_backend_format_has_alpha(uint32_t format)
 	default:
 		return false;
 	}
+}
+
+static inline bool sun4i_backend_format_is_planar_yuv(uint32_t format)
+{
+	switch (format) {
+	case DRM_FORMAT_YUV411:
+	case DRM_FORMAT_YUV422:
+	case DRM_FORMAT_YUV444:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static inline bool sun4i_backend_format_is_packed_yuv422(uint32_t format)
+{
+	switch (format) {
+	case DRM_FORMAT_YUYV:
+	case DRM_FORMAT_YVYU:
+	case DRM_FORMAT_UYVY:
+	case DRM_FORMAT_VYUY:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
+static inline bool sun4i_backend_format_is_packed_yuv444(uint32_t format)
+{
+	switch (format) {
+	case DRM_FORMAT_AYUV:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
+static inline bool sun4i_backend_format_is_yuv(uint32_t format)
+{
+	return sun4i_backend_format_is_planar_yuv(format) ||
+		sun4i_backend_format_is_packed_yuv422(format) ||
+		sun4i_backend_format_is_packed_yuv444(format);
 }
 
 void sun4i_backend_layer_enable(struct sun4i_backend *backend,
