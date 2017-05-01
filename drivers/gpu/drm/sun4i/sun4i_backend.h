@@ -144,6 +144,8 @@
 #define SUN4I_BACKEND_HWCCOLORTAB_OFF		0x4c00
 #define SUN4I_BACKEND_PIPE_OFF(p)		(0x5000 + (0x400 * (p)))
 
+#define SUN4I_BACKEND_NUM_LAYERS		4
+
 struct sun4i_backend {
 	struct sunxi_engine	engine;
 
@@ -171,5 +173,7 @@ int sun4i_backend_update_layer_formats(struct sun4i_backend *backend,
 				       int layer, struct drm_plane *plane);
 int sun4i_backend_update_layer_buffer(struct sun4i_backend *backend,
 				      int layer, struct drm_plane *plane);
+int sun4i_backend_update_layer_zpos(struct sun4i_backend *backend,
+				    int layer, struct drm_plane *plane);
 
 #endif /* _SUN4I_BACKEND_H_ */

@@ -43,6 +43,7 @@ static void sun4i_backend_layer_atomic_update(struct drm_plane *plane,
 	sun4i_backend_update_layer_coord(backend, layer->id, plane);
 	sun4i_backend_update_layer_formats(backend, layer->id, plane);
 	sun4i_backend_update_layer_buffer(backend, layer->id, plane);
+	sun4i_backend_update_layer_zpos(backend, layer->id, plane);
 	sun4i_backend_layer_enable(backend, layer->id, true);
 }
 
@@ -57,6 +58,7 @@ static const struct drm_plane_funcs sun4i_backend_layer_funcs = {
 	.destroy		= drm_plane_cleanup,
 	.disable_plane		= drm_atomic_helper_disable_plane,
 	.reset			= drm_atomic_helper_plane_reset,
+	.set_property		= drm_atomic_helper_plane_set_property,
 	.update_plane		= drm_atomic_helper_update_plane,
 };
 
@@ -164,6 +166,9 @@ struct drm_plane **sun4i_layers_init(struct drm_device *drm,
 				i ? "overlay" : "primary");
 			return ERR_CAST(layer);
 		};
+
+		drm_plane_create_zpos_property(&layer->plane, i, 0,
+					       SUN4I_BACKEND_NUM_LAYERS - 1);
 
 		DRM_DEBUG_DRIVER("Assigning %s plane to pipe %d\n",
 				 i ? "overlay" : "primary", plane->pipe);
