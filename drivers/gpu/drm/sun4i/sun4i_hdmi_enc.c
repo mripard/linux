@@ -14,6 +14,7 @@
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_edid.h>
 #include <drm/drm_encoder.h>
+#include <drm/drm_of.h>
 #include <drm/drm_panel.h>
 
 #include <linux/clk.h>
@@ -174,14 +175,20 @@ static int sun4i_hdmi_read_sub_block(struct sun4i_hdmi *hdmi,
 	unsigned long reg;
 	int i;
 
-	reg = readl(hdmi->base + SUN4I_HDMI_DDC_FIFO_CTRL_REG);
-	writel(reg | SUN4I_HDMI_DDC_FIFO_CTRL_CLEAR,
-	       hdmi->base + SUN4I_HDMI_DDC_FIFO_CTRL_REG);
+	reg = readl(hdmi->base + SUN4I_HDMI_DDC_CTRL_REG);
+	reg &= ~SUN4I_HDMI_DDC_CTRL_FIFO_DIR_MASK;
+	writel(reg | SUN4I_HDMI_DDC_CTRL_FIFO_DIR_READ,
+	       hdmi->base + SUN4I_HDMI_DDC_CTRL_REG);
+
 	writel(SUN4I_HDMI_DDC_ADDR_SEGMENT(offset >> 8) |
 	       SUN4I_HDMI_DDC_ADDR_EDDC(0x60) |
 	       SUN4I_HDMI_DDC_ADDR_OFFSET(offset) |
 	       SUN4I_HDMI_DDC_ADDR_SLAVE(DDC_ADDR),
 	       hdmi->base + SUN4I_HDMI_DDC_ADDR_REG);
+
+	reg = readl(hdmi->base + SUN4I_HDMI_DDC_FIFO_CTRL_REG);
+	writel(reg | SUN4I_HDMI_DDC_FIFO_CTRL_CLEAR,
+	       hdmi->base + SUN4I_HDMI_DDC_FIFO_CTRL_REG);
 
 	writel(count, hdmi->base + SUN4I_HDMI_DDC_BYTE_COUNT_REG);
 	writel(SUN4I_HDMI_DDC_CMD_EXPLICIT_EDDC_READ,
@@ -390,10 +397,8 @@ static int sun4i_hdmi_bind(struct device *dev, struct device *master,
 
 	hdmi->encoder.possible_crtcs = drm_of_find_possible_crtcs(drm,
 								  dev->of_node);
-	if (!hdmi->encoder.possible_crtcs) {
-		ret = -EPROBE_DEFER;
-		goto err_disable_clk;
-	}
+	if (!hdmi->encoder.possible_crtcs)
+		return ret;
 
 	drm_connector_helper_add(&hdmi->connector,
 				 &sun4i_hdmi_connector_helper_funcs);
