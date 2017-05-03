@@ -69,6 +69,18 @@ static int sun4i_hdmi_setup_avi_infoframes(struct sun4i_hdmi *hdmi,
 	return 0;
 }
 
+static int sun4i_hdmi_atomic_check(struct drm_encoder *encoder,
+				   struct drm_crtc_state *crtc_state,
+				   struct drm_connector_state *conn_state)
+{
+	struct drm_display_mode *mode = &crtc_state->mode;
+
+	if (mode->flags & DRM_MODE_FLAG_DBLCLK)
+		return -EINVAL;
+
+	return 0;
+}
+
 static void sun4i_hdmi_disable(struct drm_encoder *encoder)
 {
 	struct sun4i_hdmi *hdmi = drm_encoder_to_sun4i_hdmi(encoder);
@@ -161,6 +173,7 @@ static void sun4i_hdmi_mode_set(struct drm_encoder *encoder,
 }
 
 static const struct drm_encoder_helper_funcs sun4i_hdmi_helper_funcs = {
+	.atomic_check	= sun4i_hdmi_atomic_check,
 	.disable	= sun4i_hdmi_disable,
 	.enable		= sun4i_hdmi_enable,
 	.mode_set	= sun4i_hdmi_mode_set,
