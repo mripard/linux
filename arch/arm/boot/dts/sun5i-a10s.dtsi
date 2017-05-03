@@ -81,10 +81,15 @@
 		hdmi: hdmi@01c16000 {
 			compatible = "allwinner,sun5i-a10s-hdmi";
 			reg = <0x01c16000 0x1000>;
+			interrupts = <58>;
 			clocks = <&ccu CLK_AHB_HDMI>, <&ccu CLK_HDMI>,
 				 <&ccu CLK_PLL_VIDEO0_2X>,
 				 <&ccu CLK_PLL_VIDEO1_2X>;
 			clock-names = "ahb", "mod", "pll-0", "pll-1";
+			dmas = <&dma SUN4I_DMA_NORMAL 16>,
+			       <&dma SUN4I_DMA_NORMAL 16>,
+			       <&dma SUN4I_DMA_DEDICATED 24>;
+			dma-names = "ddc-tx", "ddc-rx", "audio-tx";
 			status = "disabled";
 
 			ports {
