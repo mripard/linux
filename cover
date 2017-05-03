@@ -18,9 +18,6 @@ While this might sound overkill, other SoC have a different, external
 source for the DDC clock, which will be easier to support through the clock
 framework.
 
-It's still a bit rough around the edges, as it doesn't work for all the
-modes. This will need to be fixed before being merged obviously.
-
 The IP also supports audio (through an already supported i2s controller,
 and some missing configuration in the HDMI controller) and CEC. Both will
 come eventually.
@@ -54,3 +51,8 @@ Changes from v1:
     evaluate
   - Added a clk_set_rate for the hdmi module clock
   - Fixed the V_TOTAL TCON ch0 calculation to be consistent with ch1's
+  - Defined all registers, and remove the TODOs
+  - Fixed the EDID issues by increasing the timeout.
+  - Added an atomic_check to prevent the DBLCLK modes to be used, as it is
+    not supported yet
+  - Updated the binding to add the interrupts and DMA channels
