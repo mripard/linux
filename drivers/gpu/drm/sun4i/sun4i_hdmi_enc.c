@@ -200,7 +200,7 @@ static int sun4i_hdmi_read_sub_block(struct sun4i_hdmi *hdmi,
 
 	if (readl_poll_timeout(hdmi->base + SUN4I_HDMI_DDC_CTRL_REG, reg,
 			       !(reg & SUN4I_HDMI_DDC_CTRL_START_CMD),
-			       100, 2000))
+			       100, 100000))
 		return -EIO;
 
 	for (i = 0; i < count; i++)
