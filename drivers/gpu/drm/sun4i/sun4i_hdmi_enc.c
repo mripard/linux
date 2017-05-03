@@ -28,6 +28,8 @@
 #include "sun4i_hdmi.h"
 #include "sun4i_tcon.h"
 
+#define DDC_SEGMENT_ADDR	0x30
+
 static inline struct sun4i_hdmi *
 drm_encoder_to_sun4i_hdmi(struct drm_encoder *encoder)
 {
@@ -181,7 +183,7 @@ static int sun4i_hdmi_read_sub_block(struct sun4i_hdmi *hdmi,
 	       hdmi->base + SUN4I_HDMI_DDC_CTRL_REG);
 
 	writel(SUN4I_HDMI_DDC_ADDR_SEGMENT(offset >> 8) |
-	       SUN4I_HDMI_DDC_ADDR_EDDC(0x60) |
+	       SUN4I_HDMI_DDC_ADDR_EDDC(DDC_SEGMENT_ADDR << 1) |
 	       SUN4I_HDMI_DDC_ADDR_OFFSET(offset) |
 	       SUN4I_HDMI_DDC_ADDR_SLAVE(DDC_ADDR),
 	       hdmi->base + SUN4I_HDMI_DDC_ADDR_REG);
@@ -355,26 +357,38 @@ static int sun4i_hdmi_bind(struct device *dev, struct device *master,
 
 	writel(SUN4I_HDMI_CTRL_ENABLE, hdmi->base + SUN4I_HDMI_CTRL_REG);
 
-#define SUN4I_HDMI_PAD_CTRL0 0xfe800000
+	writel(SUN4I_HDMI_PAD_CTRL0_TXEN | SUN4I_HDMI_PAD_CTRL0_CKEN |
+	       SUN4I_HDMI_PAD_CTRL0_PWENG | SUN4I_HDMI_PAD_CTRL0_PWEND |
+	       SUN4I_HDMI_PAD_CTRL0_PWENC | SUN4I_HDMI_PAD_CTRL0_LDODEN |
+	       SUN4I_HDMI_PAD_CTRL0_LDOCEN | SUN4I_HDMI_PAD_CTRL0_BIASEN,
+	       hdmi->base + SUN4I_HDMI_PAD_CTRL0_REG);
 
-	writel(SUN4I_HDMI_PAD_CTRL0, hdmi->base + SUN4I_HDMI_PAD_CTRL0_REG);
-
-	/* TODO: defines */
 	/*
 	 * We can't just initialize the register there, we need to
 	 * protect the clock bits that have already been read out and
 	 * cached by the clock framework.
 	 */
 	reg = readl(hdmi->base + SUN4I_HDMI_PAD_CTRL1_REG);
-	reg = (6 << 3) | (2 << 10) | BIT(14) | BIT(15) | BIT(19) | BIT(20) |
-		BIT(22) | BIT(23) | (reg & SUN4I_HDMI_PAD_CTRL1_HALVE_CLK);
+	reg = reg & SUN4I_HDMI_PAD_CTRL1_HALVE_CLK;
+	reg |= SUN4I_HDMI_PAD_CTRL1_REG_AMP(6) |
+		SUN4I_HDMI_PAD_CTRL1_REG_EMP(2) |
+		SUN4I_HDMI_PAD_CTRL1_REG_DENCK |
+		SUN4I_HDMI_PAD_CTRL1_REG_DEN |
+		SUN4I_HDMI_PAD_CTRL1_EMPCK_OPT |
+		SUN4I_HDMI_PAD_CTRL1_EMP_OPT |
+		SUN4I_HDMI_PAD_CTRL1_AMPCK_OPT |
+		SUN4I_HDMI_PAD_CTRL1_AMP_OPT;
 	writel(reg, hdmi->base + SUN4I_HDMI_PAD_CTRL1_REG);
 
 	/* TODO: defines */
 	reg = readl(hdmi->base + SUN4I_HDMI_PLL_CTRL_REG);
-	reg = (8 << 0) | (7 << 8) | (239 << 12) | (7 << 17) | (4 << 20) |
-		BIT(25) | BIT(27) | BIT(28) | BIT(29) | BIT(30) | BIT(31) |
-		(reg & SUN4I_HDMI_PLL_CTRL_DIV_MASK);
+	reg = reg & SUN4I_HDMI_PLL_CTRL_DIV_MASK;
+	reg |= SUN4I_HDMI_PLL_CTRL_VCO_S(8) | SUN4I_HDMI_PLL_CTRL_CS(7) |
+		SUN4I_HDMI_PLL_CTRL_CP_S(239) | SUN4I_HDMI_PLL_CTRL_S(7) |
+		SUN4I_HDMI_PLL_CTRL_VCO_GAIN(4) | SUN4I_HDMI_PLL_CTRL_SDIV2 |
+		SUN4I_HDMI_PLL_CTRL_LDO2_EN | SUN4I_HDMI_PLL_CTRL_LDO1_EN |
+		SUN4I_HDMI_PLL_CTRL_HV_IS_33 | SUN4I_HDMI_PLL_CTRL_BWS |
+		SUN4I_HDMI_PLL_CTRL_PLL_EN;
 	writel(reg, hdmi->base + SUN4I_HDMI_PLL_CTRL_REG);
 
 	ret = sun4i_ddc_create(hdmi, hdmi->tmds_clk);
