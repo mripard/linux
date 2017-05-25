@@ -321,7 +321,7 @@
 		 * moment.
 		 */
 		vbat-supply = <&reg_vcc3v3>;
-		max-speed = <115200>;
+		max-speed = <1500000>;
 	};
 };
 
