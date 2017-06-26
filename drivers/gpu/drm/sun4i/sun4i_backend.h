@@ -145,6 +145,7 @@
 #define SUN4I_BACKEND_PIPE_OFF(p)		(0x5000 + (0x400 * (p)))
 
 #define SUN4I_BACKEND_NUM_LAYERS		4
+#define SUN4I_BACKEND_NUM_ALPHA_LAYERS		1
 
 struct sun4i_backend {
 	struct sunxi_engine	engine;
@@ -163,6 +164,21 @@ static inline struct sun4i_backend *
 engine_to_sun4i_backend(struct sunxi_engine *engine)
 {
 	return container_of(engine, struct sun4i_backend, engine);
+}
+
+static inline bool sun4i_backend_format_has_alpha(uint32_t format)
+{
+	switch (format) {
+	case DRM_FORMAT_ARGB8888:
+	case DRM_FORMAT_ARGB4444:
+	case DRM_FORMAT_ARGB1555:
+	case DRM_FORMAT_RGBA5551:
+	case DRM_FORMAT_RGBA4444:
+	case DRM_FORMAT_AYUV:
+		return true;
+	default:
+		return false;
+	}
 }
 
 void sun4i_backend_layer_enable(struct sun4i_backend *backend,

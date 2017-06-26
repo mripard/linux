@@ -10,12 +10,15 @@
  * the License, or (at your option) any later version.
  */
 
+#include <drm/drm_atomic.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_fb_cma_helper.h>
 #include <drm/drmP.h>
 
 #include "sun4i_drv.h"
+#include "sun4i_backend.h"
 #include "sun4i_framebuffer.h"
+#include "sun4i_layer.h"
 
 static void sun4i_de_output_poll_changed(struct drm_device *drm)
 {
@@ -24,9 +27,91 @@ static void sun4i_de_output_poll_changed(struct drm_device *drm)
 	drm_fbdev_cma_hotplug_event(drv->fbdev);
 }
 
+static int sun4i_de_atomic_check(struct drm_device *drm,
+				 struct drm_atomic_state *state)
+{
+	struct drm_plane *plane;
+	unsigned int num_alpha_planes = 0;
+	unsigned int num_planes = 0;
+	int i = 0;
+	int ret;
+
+	ret = drm_atomic_helper_check(drm, state);
+	if (ret)
+		return ret;
+
+	DRM_DEBUG_DRIVER("Starting checking our planes\n");
+
+	drm_for_each_plane(plane, drm) {
+		struct drm_plane_state *plane_state;
+		struct drm_framebuffer *fb;
+		struct drm_format_name_buf format_name;
+
+		DRM_DEBUG_DRIVER("Testing plane %d in pending state\n", i++);
+
+		plane_state = drm_atomic_get_plane_state(state, plane);
+		fb = plane_state->fb;
+
+		if (!fb) {
+			DRM_DEBUG_DRIVER("Plane has no FB.. skipping\n");
+			continue;
+		}
+
+		DRM_DEBUG_DRIVER("Plane FB format is %s\n",
+				 drm_get_format_name(fb->format->format,
+						     &format_name));
+
+		if (sun4i_backend_format_has_alpha(fb->format->format))
+			num_alpha_planes++;
+
+		num_planes++;
+	}
+
+	/*
+	 * The hardware is a bit unusual here.
+	 *
+	 * Even though it supports 4 layers, it does the composition
+	 * in two separate steps.
+	 *
+	 * The first one is assigning a layer to one of its two
+	 * pipes. If more that 1 layer is assigned to the same pipe,
+	 * and if pixels overlaps, the pipe will take the pixel from
+	 * the layer with the highest priority.
+	 *
+	 * The second step is the actual alpha blending, that takes
+	 * the two pipes as input, and uses the eventual alpha
+	 * component to do the transparency between the two.
+	 *
+	 * This two steps scenario makes us unable to guarantee a
+	 * robust alpha blending between the 4 layers in all
+	 * situations, since this means that we need to have one layer
+	 * with alpha at the lowest position of our two pipes.
+	 *
+	 * However, we cannot even do that, since the hardware has a
+	 * bug where the lowest plane of the lowest pipe (pipe 0,
+	 * priority 0), if it has any alpha, will discard the pixel
+	 * entirely and just display the pixels in the background
+	 * color (black by default).
+	 *
+	 * Since means that we effectively have only three valid
+	 * configurations with alpha, all of them with the alpha being
+	 * on pipe1 with the lowest position, which can be 1, 2 or 3
+	 * depending on the number of planes and their zpos.
+	 */
+	if (num_alpha_planes > SUN4I_BACKEND_NUM_ALPHA_LAYERS) {
+		DRM_DEBUG_DRIVER("Too many planes with alpha, rejecting...\n");
+		return -EINVAL;
+	}
+
+	DRM_DEBUG_DRIVER("State valid with %u planes, %u alpha\n",
+			 num_planes, num_alpha_planes);
+
+	return 0;
+}
+
 static const struct drm_mode_config_funcs sun4i_de_mode_config_funcs = {
 	.output_poll_changed	= sun4i_de_output_poll_changed,
-	.atomic_check		= drm_atomic_helper_check,
+	.atomic_check		= sun4i_de_atomic_check,
 	.atomic_commit		= drm_atomic_helper_commit,
 	.fb_create		= drm_fb_cma_create,
 };
