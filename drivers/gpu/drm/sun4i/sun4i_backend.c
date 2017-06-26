@@ -248,12 +248,16 @@ int sun4i_backend_update_layer_zpos(struct sun4i_backend *backend, int layer,
 				    struct drm_plane *plane)
 {
 	struct drm_plane_state *state = plane->state;
+	struct sun4i_layer_state *p_state = state_to_sun4i_layer_state(state);
 	unsigned int priority = state->normalized_zpos;
+	unsigned int pipe = p_state->pipe;
 
-	DRM_DEBUG_DRIVER("Setting layer %d priority to %d\n", layer, priority);
-
+	DRM_DEBUG_DRIVER("Setting layer %d priority to %d and pipe %d\n",
+			 layer, priority, pipe);
 	regmap_update_bits(backend->engine.regs, SUN4I_BACKEND_ATTCTL_REG0(layer),
+			   SUN4I_BACKEND_ATTCTL_REG0_LAY_PIPESEL_MASK |
 			   SUN4I_BACKEND_ATTCTL_REG0_LAY_PRISEL_MASK,
+			   SUN4I_BACKEND_ATTCTL_REG0_LAY_PIPESEL(p_state->pipe) |
 			   SUN4I_BACKEND_ATTCTL_REG0_LAY_PRISEL(priority));
 
 	return 0;

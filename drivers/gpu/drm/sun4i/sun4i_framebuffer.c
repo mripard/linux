@@ -30,9 +30,11 @@ static void sun4i_de_output_poll_changed(struct drm_device *drm)
 static int sun4i_de_atomic_check(struct drm_device *drm,
 				 struct drm_atomic_state *state)
 {
+	struct drm_plane *plane_array[SUN4I_BACKEND_NUM_LAYERS];
 	struct drm_plane *plane;
 	unsigned int num_alpha_planes = 0;
 	unsigned int num_planes = 0;
+	unsigned int current_pipe = 0;
 	int i = 0;
 	int ret;
 
@@ -63,6 +65,12 @@ static int sun4i_de_atomic_check(struct drm_device *drm,
 
 		if (sun4i_backend_format_has_alpha(fb->format->format))
 			num_alpha_planes++;
+
+		DRM_DEBUG_DRIVER("Plane zpos is %d\n",
+				 plane_state->normalized_zpos);
+
+		/* Sort our planes by Zpos */
+                plane_array[plane_state->normalized_zpos] = plane;
 
 		num_planes++;
 	}
@@ -101,6 +109,26 @@ static int sun4i_de_atomic_check(struct drm_device *drm,
 	if (num_alpha_planes > SUN4I_BACKEND_NUM_ALPHA_LAYERS) {
 		DRM_DEBUG_DRIVER("Too many planes with alpha, rejecting...\n");
 		return -EINVAL;
+	}
+
+	/* We can't have an alpha plane at the lowest position */
+	if (sun4i_backend_format_has_alpha(plane_array[0]->state->fb->format->format))
+		return -EINVAL;
+
+	for (i = 1; i < num_planes; i++) {
+		struct drm_plane *plane = plane_array[i];
+		struct drm_plane_state *p_state = plane->state;
+		struct drm_framebuffer *fb = p_state->fb;
+		struct sun4i_layer_state *s_state = state_to_sun4i_layer_state(p_state);
+
+		/*
+		 * The only alpha position is the lowest plane of the
+		 * second pipe.
+		 */
+		if (sun4i_backend_format_has_alpha(fb->format->format))
+			current_pipe++;
+
+		s_state->pipe = current_pipe;
 	}
 
 	DRM_DEBUG_DRIVER("State valid with %u planes, %u alpha\n",
