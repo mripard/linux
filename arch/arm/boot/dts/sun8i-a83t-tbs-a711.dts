@@ -118,13 +118,6 @@
 	wifi_pwrseq: wifi_pwrseq {
 		compatible = "mmc-pwrseq-simple";
 		reset-gpios = <&r_pio 0 2 GPIO_ACTIVE_LOW>; /* PL2 WL-PMU-EN */
-
-		/*
-		 * This is actually Bluetooth's clock, but we have to
-		 * hook it up somewheere
-		 */
-		clocks = <&ac100_rtc 1>;
-		clock-names = "ext_clock";
 	};
 };
 
@@ -390,11 +383,27 @@
 	status = "okay";
 };
 
-/* There's the BT part of the AP6210 connected to that UART */
 &uart1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart1_pins>, <&uart1_rts_cts_pins>;
 	status = "okay";
+
+	bluetooth {
+		compatible = "brcm,bcm43438-bt";
+		clocks = <&ac100_rtc 1>;
+		clock-names = "extclk";
+
+		device-wakeup-gpios = <&pio 7 5 GPIO_ACTIVE_LOW>;
+		host-wakeup-gpios = <&r_pio 0 5 GPIO_ACTIVE_HIGH>;
+		shutdown-gpios = <&r_pio 0 4 GPIO_ACTIVE_LOW>;
+		/*
+		 * FIXME: This needs to be replaced by DLDO1 once we
+		 * have the regulator support.
+		 */
+		reg-en-supply = <&reg_vcc3v0>;
+		vbat-supply = <&reg_vbat>;
+		max-speed = <1500000>;
+	};
 };
 
 &usb_otg {
