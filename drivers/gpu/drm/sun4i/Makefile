@@ -10,6 +10,7 @@ sun4i-drm-hdmi-y		+= sun4i_hdmi_tmds_clk.o
 
 sun4i-tcon-y			+= sun4i_tcon.o
 sun4i-tcon-y			+= sun4i_rgb.o
+sun4i-tcon-y			+= sun4i_lvds.o
 sun4i-tcon-y			+= sun4i_dotclock.o
 sun4i-tcon-y			+= sun4i_crtc.o
 
