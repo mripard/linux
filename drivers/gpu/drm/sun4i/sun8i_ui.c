@@ -17,7 +17,7 @@
 #include <drm/drm_plane_helper.h>
 #include <drm/drmP.h>
 
-#include "sun8i_layer.h"
+#include "sun8i_ui.h"
 #include "sun8i_mixer.h"
 
 struct sun8i_plane_desc {
@@ -26,33 +26,33 @@ struct sun8i_plane_desc {
 	       uint32_t                nformats;
 };
 
-static void sun8i_mixer_layer_atomic_disable(struct drm_plane *plane,
-					       struct drm_plane_state *old_state)
+static void sun8i_mixer_ui_atomic_disable(struct drm_plane *plane,
+					  struct drm_plane_state *old_state)
 {
-	struct sun8i_layer *layer = plane_to_sun8i_layer(plane);
-	struct sun8i_mixer *mixer = layer->mixer;
+	struct sun8i_ui *ui = plane_to_sun8i_ui(plane);
+	struct sun8i_mixer *mixer = ui->mixer;
 
-	sun8i_mixer_layer_enable(mixer, layer->id, false);
+	sun8i_mixer_layer_enable(mixer, ui->id, false);
 }
 
-static void sun8i_mixer_layer_atomic_update(struct drm_plane *plane,
-					      struct drm_plane_state *old_state)
+static void sun8i_mixer_ui_atomic_update(struct drm_plane *plane,
+					 struct drm_plane_state *old_state)
 {
-	struct sun8i_layer *layer = plane_to_sun8i_layer(plane);
-	struct sun8i_mixer *mixer = layer->mixer;
+	struct sun8i_ui *ui = plane_to_sun8i_ui(plane);
+	struct sun8i_mixer *mixer = ui->mixer;
 
-	sun8i_mixer_update_layer_coord(mixer, layer->id, plane);
-	sun8i_mixer_update_layer_formats(mixer, layer->id, plane);
-	sun8i_mixer_update_layer_buffer(mixer, layer->id, plane);
-	sun8i_mixer_layer_enable(mixer, layer->id, true);
+	sun8i_mixer_update_layer_coord(mixer, ui->id, plane);
+	sun8i_mixer_update_layer_formats(mixer, ui->id, plane);
+	sun8i_mixer_update_layer_buffer(mixer, ui->id, plane);
+	sun8i_mixer_layer_enable(mixer, ui->id, true);
 }
 
-static struct drm_plane_helper_funcs sun8i_mixer_layer_helper_funcs = {
-	.atomic_disable	= sun8i_mixer_layer_atomic_disable,
-	.atomic_update	= sun8i_mixer_layer_atomic_update,
+static struct drm_plane_helper_funcs sun8i_mixer_ui_helper_funcs = {
+	.atomic_disable	= sun8i_mixer_ui_atomic_disable,
+	.atomic_update	= sun8i_mixer_ui_atomic_update,
 };
 
-static const struct drm_plane_funcs sun8i_mixer_layer_funcs = {
+static const struct drm_plane_funcs sun8i_mixer_ui_funcs = {
 	.atomic_destroy_state	= drm_atomic_helper_plane_destroy_state,
 	.atomic_duplicate_state	= drm_atomic_helper_plane_duplicate_state,
 	.destroy		= drm_plane_cleanup,
@@ -61,7 +61,7 @@ static const struct drm_plane_funcs sun8i_mixer_layer_funcs = {
 	.update_plane		= drm_atomic_helper_update_plane,
 };
 
-static const uint32_t sun8i_mixer_layer_formats[] = {
+static const uint32_t sun8i_mixer_ui_formats[] = {
 	DRM_FORMAT_RGB888,
 	DRM_FORMAT_ARGB8888,
 	DRM_FORMAT_XRGB8888,
@@ -70,41 +70,41 @@ static const uint32_t sun8i_mixer_layer_formats[] = {
 static const struct sun8i_plane_desc sun8i_mixer_planes[] = {
 	{
 		.type = DRM_PLANE_TYPE_PRIMARY,
-		.formats = sun8i_mixer_layer_formats,
-		.nformats = ARRAY_SIZE(sun8i_mixer_layer_formats),
+		.formats = sun8i_mixer_ui_formats,
+		.nformats = ARRAY_SIZE(sun8i_mixer_ui_formats),
 	},
 };
 
-static struct sun8i_layer *sun8i_layer_init_one(struct drm_device *drm,
-						struct sun8i_mixer *mixer,
-						const struct sun8i_plane_desc *plane)
+static struct sun8i_ui *sun8i_ui_init_one(struct drm_device *drm,
+					  struct sun8i_mixer *mixer,
+					  const struct sun8i_plane_desc *plane)
 {
-	struct sun8i_layer *layer;
+	struct sun8i_ui *ui;
 	int ret;
 
-	layer = devm_kzalloc(drm->dev, sizeof(*layer), GFP_KERNEL);
-	if (!layer)
+	ui = devm_kzalloc(drm->dev, sizeof(*ui), GFP_KERNEL);
+	if (!ui)
 		return ERR_PTR(-ENOMEM);
 
 	/* possible crtcs are set later */
-	ret = drm_universal_plane_init(drm, &layer->plane, 0,
-				       &sun8i_mixer_layer_funcs,
+	ret = drm_universal_plane_init(drm, &ui->plane, 0,
+				       &sun8i_mixer_ui_funcs,
 				       plane->formats, plane->nformats,
 				       NULL, plane->type, NULL);
 	if (ret) {
-		dev_err(drm->dev, "Couldn't initialize layer\n");
+		dev_err(drm->dev, "Couldn't initialize ui\n");
 		return ERR_PTR(ret);
 	}
 
-	drm_plane_helper_add(&layer->plane,
-			     &sun8i_mixer_layer_helper_funcs);
-	layer->mixer = mixer;
+	drm_plane_helper_add(&ui->plane,
+			     &sun8i_mixer_ui_helper_funcs);
+	ui->mixer = mixer;
 
-	return layer;
+	return ui;
 }
 
-struct drm_plane **sun8i_layers_init(struct drm_device *drm,
-				     struct sunxi_engine *engine)
+struct drm_plane **sun8i_ui_init(struct drm_device *drm,
+				 struct sunxi_engine *engine)
 {
 	struct drm_plane **planes;
 	struct sun8i_mixer *mixer = engine_to_sun8i_mixer(engine);
@@ -117,17 +117,17 @@ struct drm_plane **sun8i_layers_init(struct drm_device *drm,
 
 	for (i = 0; i < ARRAY_SIZE(sun8i_mixer_planes); i++) {
 		const struct sun8i_plane_desc *plane = &sun8i_mixer_planes[i];
-		struct sun8i_layer *layer;
+		struct sun8i_ui *ui;
 
-		layer = sun8i_layer_init_one(drm, mixer, plane);
-		if (IS_ERR(layer)) {
+		ui = sun8i_ui_init_one(drm, mixer, plane);
+		if (IS_ERR(ui)) {
 			dev_err(drm->dev, "Couldn't initialize %s plane\n",
 				i ? "overlay" : "primary");
-			return ERR_CAST(layer);
+			return ERR_CAST(ui);
 		};
 
-		layer->id = i;
-		planes[i] = &layer->plane;
+		ui->id = i;
+		planes[i] = &ui->plane;
 	};
 
 	return planes;

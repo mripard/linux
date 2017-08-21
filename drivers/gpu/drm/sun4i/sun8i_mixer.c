@@ -26,7 +26,7 @@
 
 #include "sun4i_drv.h"
 #include "sun8i_mixer.h"
-#include "sun8i_layer.h"
+#include "sun8i_ui.h"
 #include "sunxi_engine.h"
 
 static void sun8i_mixer_commit(struct sunxi_engine *engine)
@@ -228,7 +228,7 @@ int sun8i_mixer_update_layer_buffer(struct sun8i_mixer *mixer,
 
 static const struct sunxi_engine_ops sun8i_engine_ops = {
 	.commit		= sun8i_mixer_commit,
-	.layers_init	= sun8i_layers_init,
+	.layers_init	= sun8i_ui_init,
 };
 
 static struct regmap_config sun8i_mixer_regmap_config = {
