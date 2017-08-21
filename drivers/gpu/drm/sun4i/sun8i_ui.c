@@ -32,7 +32,7 @@ static void sun8i_mixer_ui_atomic_disable(struct drm_plane *plane,
 	struct sun8i_ui *ui = plane_to_sun8i_ui(plane);
 	struct sun8i_mixer *mixer = ui->mixer;
 
-	sun8i_mixer_layer_enable(mixer, ui->id, false);
+	sun8i_mixer_layer_enable(mixer, ui, false);
 }
 
 static void sun8i_mixer_ui_atomic_update(struct drm_plane *plane,
@@ -41,10 +41,10 @@ static void sun8i_mixer_ui_atomic_update(struct drm_plane *plane,
 	struct sun8i_ui *ui = plane_to_sun8i_ui(plane);
 	struct sun8i_mixer *mixer = ui->mixer;
 
-	sun8i_mixer_update_layer_coord(mixer, ui->id, plane);
-	sun8i_mixer_update_layer_formats(mixer, ui->id, plane);
-	sun8i_mixer_update_layer_buffer(mixer, ui->id, plane);
-	sun8i_mixer_layer_enable(mixer, ui->id, true);
+	sun8i_mixer_update_layer_coord(mixer, ui);
+	sun8i_mixer_update_layer_formats(mixer, ui);
+	sun8i_mixer_update_layer_buffer(mixer, ui);
+	sun8i_mixer_layer_enable(mixer, ui, true);
 }
 
 static struct drm_plane_helper_funcs sun8i_mixer_ui_helper_funcs = {
@@ -126,6 +126,8 @@ struct drm_plane **sun8i_ui_init(struct drm_device *drm,
 			return ERR_CAST(ui);
 		};
 
+		/* TODO: Support several UI channels */
+		ui->chan = 0;
 		ui->id = i;
 		planes[i] = &ui->plane;
 	};
