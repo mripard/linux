@@ -13,24 +13,24 @@
  * the License, or (at your option) any later version.
  */
 
-#ifndef _SUN8I_LAYER_H_
-#define _SUN8I_LAYER_H_
+#ifndef _SUN8I_UI_H_
+#define _SUN8I_UI_H_
 
 struct sunxi_engine;
 
-struct sun8i_layer {
+struct sun8i_ui {
 	struct drm_plane	plane;
 	struct sun4i_drv	*drv;
 	struct sun8i_mixer	*mixer;
 	int			id;
 };
 
-static inline struct sun8i_layer *
-plane_to_sun8i_layer(struct drm_plane *plane)
+static inline struct sun8i_ui *
+plane_to_sun8i_ui(struct drm_plane *plane)
 {
-	return container_of(plane, struct sun8i_layer, plane);
+	return container_of(plane, struct sun8i_ui, plane);
 }
 
-struct drm_plane **sun8i_layers_init(struct drm_device *drm,
-				     struct sunxi_engine *engine);
-#endif /* _SUN8I_LAYER_H_ */
+struct drm_plane **sun8i_ui_init(struct drm_device *drm,
+				 struct sunxi_engine *engine);
+#endif /* _SUN8I_UI_H_ */
