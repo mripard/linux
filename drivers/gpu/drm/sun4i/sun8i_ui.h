@@ -22,6 +22,7 @@ struct sun8i_ui {
 	struct drm_plane	plane;
 	struct sun4i_drv	*drv;
 	struct sun8i_mixer	*mixer;
+	u8			chan;
 	int			id;
 };
 
