@@ -61,7 +61,7 @@ void sun8i_mixer_layer_enable(struct sun8i_mixer *mixer, struct sun8i_ui *ui,
 	regmap_update_bits(mixer->engine.regs,
 			   SUN8I_MIXER_CHAN_UI_LAYER_ATTR(ui->chan, ui->id),
 			   SUN8I_MIXER_CHAN_UI_LAYER_ATTR_ALPHA_MASK,
-			   SUN8I_MIXER_CHAN_UI_LAYER_ATTR_ALPHA_DEF);
+			   SUN8I_MIXER_CHAN_UI_LAYER_ATTR_ALPHA(255));
 }
 
 static int sun8i_mixer_drm_format_to_layer(struct drm_plane *plane,
@@ -322,19 +322,20 @@ static int sun8i_mixer_bind(struct device *dev, struct device *master,
 
 	/* Initialize blender */
 	regmap_write(mixer->engine.regs, SUN8I_MIXER_BLEND_FCOLOR_CTL,
-		     SUN8I_MIXER_BLEND_FCOLOR_CTL_DEF);
-	regmap_write(mixer->engine.regs, SUN8I_MIXER_BLEND_PREMULTIPLY,
-		     SUN8I_MIXER_BLEND_PREMULTIPLY_DEF);
+		     SUN8I_MIXER_BLEND_FCOLOR_CTL_FCOLOR_EN(0) |
+		     SUN8I_MIXER_BLEND_FCOLOR_CTL_EN(0));
+	regmap_write(mixer->engine.regs, SUN8I_MIXER_BLEND_PREMULTIPLY, 0);
 	regmap_write(mixer->engine.regs, SUN8I_MIXER_BLEND_BKCOLOR,
-		     SUN8I_MIXER_BLEND_BKCOLOR_DEF);
+		     SUN8I_MIXER_BLEND_BKCOLOR_ALPHA(255));
 	regmap_write(mixer->engine.regs, SUN8I_MIXER_BLEND_MODE(0),
-		     SUN8I_MIXER_BLEND_MODE_DEF);
-	regmap_write(mixer->engine.regs, SUN8I_MIXER_BLEND_CK_CTL,
-		     SUN8I_MIXER_BLEND_CK_CTL_DEF);
+		     SUN8I_MIXER_BLEND_MODE_PIXEL_FS(1) |
+		     SUN8I_MIXER_BLEND_MODE_PIXEL_FD(3) |
+		     SUN8I_MIXER_BLEND_MODE_ALPHA_FS(1) |
+		     SUN8I_MIXER_BLEND_MODE_ALPHA_FD(3));
+	regmap_write(mixer->engine.regs, SUN8I_MIXER_BLEND_CK_CTL, 0);
 
-	regmap_write(mixer->engine.regs,
-		     SUN8I_MIXER_BLEND_ATTR_FCOLOR(0),
-		     SUN8I_MIXER_BLEND_ATTR_FCOLOR_DEF);
+	regmap_write(mixer->engine.regs, SUN8I_MIXER_BLEND_ATTR_FCOLOR(0),
+		     SUN8I_MIXER_BLEND_ATTR_FCOLOR_ALPHA(255));
 
 	/* Select the first UI channel */
 	DRM_DEBUG_DRIVER("Selecting channel %d (first UI channel)\n", 1);

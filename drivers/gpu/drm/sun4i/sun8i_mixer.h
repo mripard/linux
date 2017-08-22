@@ -22,71 +22,82 @@
 #define SUN8I_MIXER_COORD(x, y)			((y) << 16 | (x))
 
 #define SUN8I_MIXER_GLOBAL_CTL			0x0
+#define SUN8I_MIXER_GLOBAL_CTL_RT_EN			BIT(0)
+
 #define SUN8I_MIXER_GLOBAL_STATUS		0x4
 #define SUN8I_MIXER_GLOBAL_DBUFF		0x8
+#define SUN8I_MIXER_GLOBAL_DBUFF_ENABLE			BIT(0)
+
 #define SUN8I_MIXER_GLOBAL_SIZE			0xc
 
-#define SUN8I_MIXER_GLOBAL_CTL_RT_EN		0x1
-
-#define SUN8I_MIXER_GLOBAL_DBUFF_ENABLE		0x1
-
 #define SUN8I_MIXER_BLEND_FCOLOR_CTL		0x1000
+#define SUN8I_MIXER_BLEND_FCOLOR_CTL_EN(x)		BIT(8 + (x))
+#define SUN8I_MIXER_BLEND_FCOLOR_CTL_FCOLOR_EN(x)	BIT(x)
+
 #define SUN8I_MIXER_BLEND_ATTR_FCOLOR(x)	(0x1004 + 0x10 * (x) + 0x0)
+#define SUN8I_MIXER_BLEND_ATTR_FCOLOR_ALPHA(x)		(((x) & 0xff) << 24)
+
 #define SUN8I_MIXER_BLEND_ATTR_INSIZE(x)	(0x1004 + 0x10 * (x) + 0x4)
+
 #define SUN8I_MIXER_BLEND_ATTR_OFFSET(x)	(0x1004 + 0x10 * (x) + 0x8)
 #define SUN8I_MIXER_BLEND_ROUTE			0x1080
 #define SUN8I_MIXER_BLEND_PREMULTIPLY		0x1084
+
 #define SUN8I_MIXER_BLEND_BKCOLOR		0x1088
+#define SUN8I_MIXER_BLEND_BKCOLOR_ALPHA(x)		(((x) & 0xff) << 24)
+
 #define SUN8I_MIXER_BLEND_OUTSIZE		0x108c
+
 #define SUN8I_MIXER_BLEND_MODE(x)		(0x1090 + 0x04 * (x))
+#define SUN8I_MIXER_BLEND_MODE_ALPHA_FD(x)		(((x) & 0xf) << 24)
+#define SUN8I_MIXER_BLEND_MODE_ALPHA_FS(x)		(((x) & 0xf) << 16)
+#define SUN8I_MIXER_BLEND_MODE_PIXEL_FD(x)		(((x) & 0xf) << 8)
+#define SUN8I_MIXER_BLEND_MODE_PIXEL_FS(x)		((x) & 0xf)
+
 #define SUN8I_MIXER_BLEND_CK_CTL		0x10b0
 #define SUN8I_MIXER_BLEND_CK_CFG		0x10b4
 #define SUN8I_MIXER_BLEND_CK_MAX(x)		(0x10c0 + 0x04 * (x))
 #define SUN8I_MIXER_BLEND_CK_MIN(x)		(0x10e0 + 0x04 * (x))
+
 #define SUN8I_MIXER_BLEND_OUTCTL		0x10fc
-
-/* The following numbers are some still unknown magic numbers */
-#define SUN8I_MIXER_BLEND_ATTR_FCOLOR_DEF	0xff000000
-#define SUN8I_MIXER_BLEND_FCOLOR_CTL_DEF	0x00000101
-#define SUN8I_MIXER_BLEND_PREMULTIPLY_DEF	0x0
-#define SUN8I_MIXER_BLEND_BKCOLOR_DEF		0xff000000
-#define SUN8I_MIXER_BLEND_MODE_DEF		0x03010301
-#define SUN8I_MIXER_BLEND_CK_CTL_DEF		0x0
-
-#define SUN8I_MIXER_BLEND_OUTCTL_INTERLACED	BIT(1)
+#define SUN8I_MIXER_BLEND_OUTCTL_INTERLACED		BIT(1)
 
 /*
  * VI channels are not used now, but the support of them may be introduced in
  * the future.
  */
 
-#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR(ch, layer) \
-			(0x3000 + 0x1000 * (ch) + 0x20 * (layer) + 0x0)
-#define SUN8I_MIXER_CHAN_UI_LAYER_SIZE(ch, layer) \
-			(0x3000 + 0x1000 * (ch) + 0x20 * (layer) + 0x4)
-#define SUN8I_MIXER_CHAN_UI_LAYER_COORD(ch, layer) \
-			(0x3000 + 0x1000 * (ch) + 0x20 * (layer) + 0x8)
-#define SUN8I_MIXER_CHAN_UI_LAYER_PITCH(ch, layer) \
-			(0x3000 + 0x1000 * (ch) + 0x20 * (layer) + 0xc)
-#define SUN8I_MIXER_CHAN_UI_LAYER_TOP_LADDR(ch, layer) \
-			(0x3000 + 0x1000 * (ch) + 0x20 * (layer) + 0x10)
-#define SUN8I_MIXER_CHAN_UI_LAYER_BOT_LADDR(ch, layer) \
-			(0x3000 + 0x1000 * (ch) + 0x20 * (layer) + 0x14)
-#define SUN8I_MIXER_CHAN_UI_LAYER_FCOLOR(ch, layer) \
-			(0x3000 + 0x1000 * (ch) + 0x20 * (layer) + 0x18)
-#define SUN8I_MIXER_CHAN_UI_TOP_HADDR(ch)	(0x3000 + 0x1000 * (ch) + 0x80)
-#define SUN8I_MIXER_CHAN_UI_BOT_HADDR(ch)	(0x3000 + 0x1000 * (ch) + 0x84)
-#define SUN8I_MIXER_CHAN_UI_OVL_SIZE(ch)	(0x3000 + 0x1000 * (ch) + 0x88)
+#define SUN8I_MIXER_CHAN(ch)		(0x3000 + 0x1000 * (ch))
+#define SUN8I_MIXER_UI_LAYER(ch, layer)	(SUN8I_MIXER_CHAN(ch) + 0x20 * (layer))
 
-#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR_EN		BIT(0)
-#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR_ALPHA_MODE_MASK	GENMASK(2, 1)
-#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR_FBFMT_MASK	GENMASK(11, 8)
+#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR(ch, layer)	\
+	(SUN8I_MIXER_UI_LAYER(ch, layer) + 0x00)
 #define SUN8I_MIXER_CHAN_UI_LAYER_ATTR_ALPHA_MASK	GENMASK(31, 24)
-#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR_ALPHA_MODE_DEF	(1 << 1)
-#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR_FBFMT_ARGB8888	(0 << 8)
-#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR_FBFMT_XRGB8888	(4 << 8)
-#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR_FBFMT_RGB888	(8 << 8)
-#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR_ALPHA_DEF	(0xff << 24)
+#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR_ALPHA(x)			(0xff << 24)
+#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR_FBFMT_MASK	GENMASK(11, 8)
+#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR_FBFMT_RGB888		(8 << 8)
+#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR_FBFMT_XRGB8888		(4 << 8)
+#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR_FBFMT_ARGB8888		(0 << 8)
+#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR_ALPHA_MODE_MASK	GENMASK(2, 1)
+#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR_ALPHA_MODE_DEF		(1 << 1)
+#define SUN8I_MIXER_CHAN_UI_LAYER_ATTR_EN		BIT(0)
+
+#define SUN8I_MIXER_CHAN_UI_LAYER_SIZE(ch, layer)	\
+	(SUN8I_MIXER_UI_LAYER(ch, layer) + 0x04)
+#define SUN8I_MIXER_CHAN_UI_LAYER_COORD(ch, layer)	\
+	(SUN8I_MIXER_UI_LAYER(ch, layer) + 0x08)
+#define SUN8I_MIXER_CHAN_UI_LAYER_PITCH(ch, layer)	\
+	(SUN8I_MIXER_UI_LAYER(ch, layer) + 0x0c)
+#define SUN8I_MIXER_CHAN_UI_LAYER_TOP_LADDR(ch, layer)	\
+	(SUN8I_MIXER_UI_LAYER(ch, layer) + 0x10)
+#define SUN8I_MIXER_CHAN_UI_LAYER_BOT_LADDR(ch, layer)	\
+	(SUN8I_MIXER_UI_LAYER(ch, layer) + 0x14)
+#define SUN8I_MIXER_CHAN_UI_LAYER_FCOLOR(ch, layer)	\
+	(SUN8I_MIXER_UI_LAYER(ch, layer) + 0x18)
+
+#define SUN8I_MIXER_CHAN_UI_TOP_HADDR(ch)	(SUN8I_MIXER_CHAN(ch) + 0x80)
+#define SUN8I_MIXER_CHAN_UI_BOT_HADDR(ch)	(SUN8I_MIXER_CHAN(ch) + 0x84)
+#define SUN8I_MIXER_CHAN_UI_OVL_SIZE(ch)	(SUN8I_MIXER_CHAN(ch) + 0x88)
 
 /*
  * These sub-engines are still unknown now, the EN registers are here only to
