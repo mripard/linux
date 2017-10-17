@@ -1,0 +1,16 @@
+drm/sun4i: Add A83t LVDS support
+
+Hi,
+
+Here is an attempt at supporting the LVDS output in our DRM driver. This
+has been tested on the A83T (with DE2), but since everything is basically
+in the TCON, it should also be usable on the older SoCs with minor
+modifications.
+
+This was the occasion to refactor a bunch of things. The most notable ones
+would be the documentation, and split of the UI layers in the mixer code,
+and the switch to kfifo for our endpoint parsing code in the driver that
+fixes an issue introduced by the switch to BFS.
+
+Let me know what you think,
+Maxime
