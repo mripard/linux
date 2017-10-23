@@ -13,6 +13,9 @@
 #include "ccu_gate.h"
 #include "ccu_div.h"
 
+#define CREATE_TRACE_POINTS
+#include "ccu_div_trace.h"
+
 static unsigned long ccu_div_round_rate(struct ccu_mux_internal *mux,
 					struct clk_hw *parent,
 					unsigned long *parent_rate,
@@ -20,6 +23,7 @@ static unsigned long ccu_div_round_rate(struct ccu_mux_internal *mux,
 					void *data)
 {
 	struct ccu_div *cd = data;
+	unsigned long old_rate = rate;
 
 	if (cd->common.features & CCU_FEATURE_FIXED_POSTDIV)
 		rate *= cd->fixed_post_div;
@@ -31,6 +35,8 @@ static unsigned long ccu_div_round_rate(struct ccu_mux_internal *mux,
 
 	if (cd->common.features & CCU_FEATURE_FIXED_POSTDIV)
 		rate /= cd->fixed_post_div;
+
+	trace_clk_sunxi_div_round_rate(cd, old_rate, rate);
 
 	return rate;
 }
@@ -76,6 +82,8 @@ static unsigned long ccu_div_recalc_rate(struct clk_hw *hw,
 	if (cd->common.features & CCU_FEATURE_FIXED_POSTDIV)
 		val /= cd->fixed_post_div;
 
+	trace_clk_sunxi_div_recalc_rate(cd, val);
+
 	return val;
 }
 
@@ -104,6 +112,8 @@ static int ccu_div_set_rate(struct clk_hw *hw, unsigned long rate,
 
 	val = divider_get_val(rate, parent_rate, cd->div.table, cd->div.width,
 			      cd->div.flags);
+
+	trace_clk_sunxi_div_set_rate(cd, rate, parent_rate, val);
 
 	spin_lock_irqsave(cd->common.lock, flags);
 
