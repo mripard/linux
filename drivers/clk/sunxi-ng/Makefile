@@ -1,3 +1,5 @@
+EXTRA_CFLAGS			= -I$(src)
+
 # Common objects
 lib-$(CONFIG_SUNXI_CCU)		+= ccu_common.o
 lib-$(CONFIG_SUNXI_CCU)		+= ccu_mmc_timing.o

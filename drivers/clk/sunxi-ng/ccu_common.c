@@ -23,6 +23,9 @@
 #include "ccu_gate.h"
 #include "ccu_reset.h"
 
+#define CREATE_TRACE_POINTS
+#include "ccu_common_trace.h"
+
 static DEFINE_SPINLOCK(ccu_lock);
 
 void ccu_helper_wait_for_lock(struct ccu_common *common, u32 lock)
@@ -33,12 +36,16 @@ void ccu_helper_wait_for_lock(struct ccu_common *common, u32 lock)
 	if (!lock)
 		return;
 
+	trace_clk_sunxi_lock(common);
+
 	if (common->features & CCU_FEATURE_LOCK_REG)
 		addr = common->base + common->lock_reg;
 	else
 		addr = common->base + common->reg;
 
 	WARN_ON(readl_relaxed_poll_timeout(addr, reg, reg & lock, 100, 70000));
+
+	trace_clk_sunxi_lock_complete(common);
 }
 
 /*
@@ -67,6 +74,8 @@ static int ccu_pll_notifier_cb(struct notifier_block *nb,
 
 	if (event != POST_RATE_CHANGE)
 		goto out;
+
+	trace_clk_sunxi_cpu_pll_reset(pll->common);
 
 	ccu_gate_helper_disable(pll->common, pll->enable);
 
@@ -109,6 +118,8 @@ int sunxi_ccu_probe(struct device_node *node, void __iomem *reg,
 
 		if (!hw)
 			continue;
+
+		trace_clk_sunxi_register(hw);
 
 		ret = clk_hw_register(NULL, hw);
 		if (ret) {
