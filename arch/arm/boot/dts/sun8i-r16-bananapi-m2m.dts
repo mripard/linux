@@ -301,6 +301,16 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart1_pins_a>, <&uart1_pins_cts_rts_a>;
 	status = "okay";
+
+	bluetooth {
+		compatible = "brcm,bcm43438-bt";
+		clocks = <&rtc 1>;
+		clock-names = "extclk";
+		device-wakeup-gpios = <&r_pio 0 10 GPIO_ACTIVE_HIGH>;
+		host-wakeup-gpios = <&r_pio 0 9 GPIO_ACTIVE_HIGH>;
+		shutdown-gpios = <&r_pio 0 8 GPIO_ACTIVE_LOW>;
+		max-speed = <1500000>;
+	};
 };
 
 &usb_otg {
