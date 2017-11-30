@@ -396,11 +396,7 @@
 		device-wakeup-gpios = <&pio 7 5 GPIO_ACTIVE_LOW>;
 		host-wakeup-gpios = <&r_pio 0 5 GPIO_ACTIVE_HIGH>;
 		shutdown-gpios = <&r_pio 0 4 GPIO_ACTIVE_LOW>;
-		/*
-		 * FIXME: This needs to be replaced by DLDO1 once we
-		 * have the regulator support.
-		 */
-		reg-en-supply = <&reg_vcc3v0>;
+		reg-en-supply = <&reg_dldo1>;
 		vbat-supply = <&reg_vbat>;
 		max-speed = <1500000>;
 	};

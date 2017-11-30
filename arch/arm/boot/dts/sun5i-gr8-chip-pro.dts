@@ -222,6 +222,11 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart1_pins_b>, <&uart1_cts_rts_pins_a>;
 	status = "okay";
+
+	bluetooth {
+		compatible = "realtek,rtl8723bs-bluetooth";
+		reset-gpios = <&pio 1 4 GPIO_ACTIVE_HIGH>;	/* PB4 */
+	};
 };
 
 &uart2 {
