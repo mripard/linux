@@ -363,6 +363,7 @@
 		clocks = <&ccu CLK_OUT_A>;
 		clock-names = "extclk";
 		device-wakeup-gpios = <&pio 7 24 GPIO_ACTIVE_HIGH>;
+		host-wakeup-gpios = <&pio 7 25 GPIO_ACTIVE_HIGH>;
 		shutdown-gpios = <&pio 7 18 GPIO_ACTIVE_LOW>;
 		max-speed = <1500000>;
 	};
