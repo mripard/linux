@@ -113,9 +113,11 @@ sunxi_pinctrl_desc_find_function_by_pin(struct sunxi_pinctrl *pctl,
 			struct sunxi_desc_function *func = pin->functions;
 
 			while (func->name) {
-				if (!strcmp(func->name, func_name))
+				if (!strcmp(func->name, func_name)) {
+					if (!(func->variant) ||
+					   (func->variant & pctl->variant))
 					return func;
-
+				}
 				func++;
 			}
 		}
