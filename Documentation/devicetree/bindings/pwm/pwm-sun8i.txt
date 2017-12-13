@@ -1,0 +1,18 @@
+Allwinner sun8i R40/V40/T3 SoC PWM controller
+
+Required properties:
+- compatible: should be one of:
+- "allwinner,sun8i-r40-pwm"
+- reg: physical base address and length of the controller's registers
+- #pwm-cells: should be 3. See pwm.txt in this directory for a description of
+the cells format.
+- clocks: From common clock binding, handle to the parent clock.
+
+Example:
+
+pwm: pwm at 1c23400 {
+	     compatible = "allwinner,sun8i-r40-pwm";
+	     reg = <0x01c23400 0x154>;
+	     clocks = <&osc24M>;
+	     #pwm-cells = <3>;
+};
