@@ -583,6 +583,12 @@
 			};
 
 			/omit-if-no-ref/
+			pwm0_pin: pwm0-pin {
+				pins = "PB2";
+				function = "pwm";
+			};
+
+			/omit-if-no-ref/
 			spi0_pc_pins: spi0-pc-pins {
 				pins = "PC0", "PC1", "PC2";
 				function = "spi0";
@@ -658,6 +664,14 @@
 			clock-names = "apb", "ir";
 			interrupts = <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>;
 			resets = <&ccu RST_BUS_IR1>;
+			status = "disabled";
+		};
+
+		pwm: pwm@1c23400 {
+			compatible = "allwinner,sun8i-r40-pwm";
+			reg = <0x01c23400 0x154>;
+			clocks = <&osc24M>;
+			#pwm-cells = <3>;
 			status = "disabled";
 		};
 
