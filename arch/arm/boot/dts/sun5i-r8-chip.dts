@@ -291,6 +291,11 @@
 	pinctrl-0 = <&uart3_pins_a>,
 		    <&uart3_cts_rts_pins_a>;
 	status = "okay";
+
+	bluetooth {
+		compatible = "realtek,rtl8723bs-bluetooth";
+		reset-gpios = <&pio 1 4 GPIO_ACTIVE_HIGH>;	/* PB4 */
+	};
 };
 
 &usb_otg {
