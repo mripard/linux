@@ -5,16 +5,20 @@
 #include <drm/drm_bridge.h>
 #include <drm/drm_connector.h>
 #include <drm/drm_crtc_helper.h>
+#include <drm/drm_edid.h>
 
 #include <linux/device.h>
 #include <linux/i2c.h>
 #include <linux/kernel.h>
 #include <linux/mod_devicetable.h>
 #include <linux/module.h>
+#include <linux/of.h>
+#include <linux/of_graph.h>
 
 struct ep952 {
 	struct drm_bridge	bridge;
 	struct drm_connector	connector;
+	struct i2c_adapter	*ddc;
 };
 
 static inline struct ep952 *bridge_to_ep952(struct drm_bridge *bridge)
@@ -29,7 +33,17 @@ static inline struct ep952 *connector_to_ep952(struct drm_connector *connector)
 
 static int ep952_get_modes(struct drm_connector *connector)
 {
-	return 0;
+	struct ep952 *ep952 = connector_to_ep952(connector);
+	struct edid *edid;
+
+	edid = drm_get_edid(connector, ep952->ddc);
+	if (!edid) {
+		DRM_ERROR("EDID readout failed\n");
+		return 0;
+	}
+
+	drm_mode_connector_update_edid_property(connector, edid);
+	return drm_add_edid_modes(connector, edid);
 }
 
 static const struct drm_connector_helper_funcs ep952_connector_helper_funcs = {
@@ -84,6 +98,28 @@ static const struct drm_bridge_funcs ep952_bridge_funcs = {
 	.enable		= ep952_enable,
 };
 
+static struct i2c_adapter *ep952_retrieve_ddc(struct device *dev)
+{
+	struct device_node *phandle, *remote;
+	struct i2c_adapter *ddc;
+
+	remote = of_graph_get_remote_node(dev->of_node, 1, -1);
+	if (!remote)
+		return ERR_PTR(-EINVAL);
+
+	phandle = of_parse_phandle(remote, "ddc-i2c-bus", 0);
+	of_node_put(remote);
+	if (!phandle)
+		return ERR_PTR(-ENODEV);
+
+	ddc = of_get_i2c_adapter_by_node(phandle);
+	of_node_put(phandle);
+	if (!ddc)
+		return ERR_PTR(-EPROBE_DEFER);
+
+	return ddc;
+}
+
 static int ep952_probe(struct i2c_client *client,
 		       const struct i2c_device_id *id)
 {
@@ -92,6 +128,12 @@ static int ep952_probe(struct i2c_client *client,
 	ep952 = devm_kzalloc(&client->dev, sizeof(*ep952), GFP_KERNEL);
 	if (!ep952)
 		return -ENOMEM;
+
+	ep952->ddc = ep952_retrieve_ddc(&client->dev);
+	if (IS_ERR(ep952->ddc)) {
+		dev_err(&client->dev, "Couldn't retrieve i2c bus\n");
+		return PTR_ERR(ep952->ddc);
+	}
 
 	ep952->bridge.funcs = &ep952_bridge_funcs;
 	ep952->bridge.of_node = client->dev.of_node;
