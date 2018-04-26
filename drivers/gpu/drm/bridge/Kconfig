@@ -33,6 +33,13 @@ config DRM_DUMB_VGA_DAC
 	  Support for non-programmable RGB to VGA DAC bridges, such as ADI
 	  ADV7123, TI THS8134 and THS8135 or passive resistor ladder DACs.
 
+config DRM_EXPLORE_EP952
+	tristate "Explore EP952 RGB to HDMI bridge support"
+	depends on OF
+	select DRM_KMS_HELPER
+	help
+	  Support for the EP952 RGB to HDMI bridge chip from Explore.
+
 config DRM_LVDS_ENCODER
 	tristate "Transparent parallel to LVDS encoder support"
 	depends on OF
