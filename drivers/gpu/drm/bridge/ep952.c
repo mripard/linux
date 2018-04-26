@@ -15,10 +15,13 @@
 #include <linux/of.h>
 #include <linux/of_graph.h>
 
+#include <linux/gpio/consumer.h>
+
 struct ep952 {
 	struct drm_bridge	bridge;
 	struct drm_connector	connector;
 	struct i2c_adapter	*ddc;
+	struct gpio_desc	*reset;
 };
 
 static inline struct ep952 *bridge_to_ep952(struct drm_bridge *bridge)
@@ -65,8 +68,22 @@ static const struct drm_connector_funcs ep952_connector_funcs = {
 	.reset			= drm_atomic_helper_connector_reset,
 };
 
+static void ep952_hw_reset(struct ep952 *ep952)
+{
+	if (!ep952->reset)
+		return;
+
+	gpiod_set_value(ep952->reset, 0);
+	msleep(10);
+	gpiod_set_value(ep952->reset, 1);
+	msleep(10);
+}
+
 static void ep952_enable(struct drm_bridge *bridge)
 {
+	struct ep952 *ep952 = bridge_to_ep952(bridge);
+
+	ep952_hw_reset(ep952);
 }
 
 static void ep952_disable(struct drm_bridge *bridge)
@@ -128,6 +145,13 @@ static int ep952_probe(struct i2c_client *client,
 	ep952 = devm_kzalloc(&client->dev, sizeof(*ep952), GFP_KERNEL);
 	if (!ep952)
 		return -ENOMEM;
+
+	ep952->reset = gpiod_get_optional(&client->dev, "reset",
+					  GPIOD_OUT_HIGH);
+	if (IS_ERR(ep952->reset)) {
+		dev_err(&client->dev, "Couldn't retrieve our reset GPIO\n");
+		return PTR_ERR(ep952->reset);
+	}
 
 	ep952->ddc = ep952_retrieve_ddc(&client->dev);
 	if (IS_ERR(ep952->ddc)) {
