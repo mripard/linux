@@ -7,6 +7,7 @@
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_edid.h>
 
+#include <linux/bitops.h>
 #include <linux/device.h>
 #include <linux/i2c.h>
 #include <linux/kernel.h>
@@ -17,10 +18,24 @@
 
 #include <linux/gpio/consumer.h>
 
+#define EP952_CTL1_REG		0x08
+#define EP952_CTL1_EDGE			BIT(1)
+
+#define EP952_CS_CTL_REG	0x0c
+#define EP952_CS_CTL_VMUTE		BIT(3)
+
+#define EP952_CTL4_REG		0x0e
+#define EP952_CTL4_HDMI			BIT(0)
+
+#define EP952_IIS_CTL_REG	0x3f
+#define EP952_IIS_CTL_AVI_EN		BIT(6)
+
 struct ep952 {
 	struct drm_bridge	bridge;
 	struct drm_connector	connector;
+	struct i2c_client	*client;
 	struct i2c_adapter	*ddc;
+	bool			hdmi_mode;
 	struct gpio_desc	*reset;
 };
 
@@ -34,10 +49,35 @@ static inline struct ep952 *connector_to_ep952(struct drm_connector *connector)
 	return container_of(connector, struct ep952, connector);
 }
 
+static u8 ep952_read_reg(struct ep952 *ep952, u8 reg)
+{
+	return i2c_smbus_read_byte_data(ep952->client, reg);
+}
+
+static void ep952_write_reg(struct ep952 *ep952, u8 reg, u8 val)
+{
+	i2c_smbus_write_byte_data(ep952->client, reg, val);
+}
+
+static void ep952_clr_bit(struct ep952 *ep952, u8 reg, u8 bit)
+{
+	u8 val = ep952_read_reg(ep952, reg);
+	val &= ~bit;
+	ep952_write_reg(ep952, reg, val);
+}
+
+static void ep952_set_bit(struct ep952 *ep952, u8 reg, u8 bit)
+{
+	u8 val = ep952_read_reg(ep952, reg);
+	val |= bit;
+	ep952_write_reg(ep952, reg, val);
+}
+
 static int ep952_get_modes(struct drm_connector *connector)
 {
 	struct ep952 *ep952 = connector_to_ep952(connector);
 	struct edid *edid;
+	int count;
 
 	edid = drm_get_edid(connector, ep952->ddc);
 	if (!edid) {
@@ -46,7 +86,12 @@ static int ep952_get_modes(struct drm_connector *connector)
 	}
 
 	drm_mode_connector_update_edid_property(connector, edid);
-	return drm_add_edid_modes(connector, edid);
+	count = drm_add_edid_modes(connector, edid);
+
+	ep952->hdmi_mode = drm_detect_hdmi_monitor(edid);
+
+	kfree(edid);
+	return count;
 }
 
 static const struct drm_connector_helper_funcs ep952_connector_helper_funcs = {
@@ -79,15 +124,59 @@ static void ep952_hw_reset(struct ep952 *ep952)
 	msleep(10);
 }
 
+static void ep952_write_infoframes(struct ep952 *ep952,
+				   const struct drm_display_mode *mode)
+{
+	struct hdmi_avi_infoframe frame;
+	u8 avi_buf[HDMI_INFOFRAME_SIZE(AVI)];
+	int i, ret;
+
+	ret = drm_hdmi_avi_infoframe_from_display_mode(&frame, mode, false);
+	if (ret < 0) {
+		DRM_ERROR("Couldn't fill AVI info frames\n");
+		return;
+	}
+
+	ret = hdmi_avi_infoframe_pack(&frame, avi_buf, sizeof(avi_buf));
+	if (ret < 0) {
+		DRM_ERROR("Couldn't pack AVI info frames\n");
+		return;
+	}
+
+	for (i = HDMI_INFOFRAME_HEADER_SIZE; i < HDMI_INFOFRAME_SIZE(AVI); i++)
+		ep952_write_reg(ep952,
+				EP952_AVI_REG(i - HDMI_INFOFRAME_HEADER_SIZE),
+				avi_buf[i]);
+}
+
 static void ep952_enable(struct drm_bridge *bridge)
 {
 	struct ep952 *ep952 = bridge_to_ep952(bridge);
 
 	ep952_hw_reset(ep952);
+
+	ep952_set_bit(ep952, EP952_TXPHY_CTL0_REG, EP952_TXPHY_CTL0_TERM_EN);
+	ep952_set_bit(ep952, EP952_CS_CTL_REG, EP952_CS_CTL_VMUTE);
+
+	if (ep952->hdmi_mode) {
+		ep952_write_infoframes(ep952);
+		ep952_write_reg(ep952, EP952_CTL4_REG, EP952_CTL4_HDMI);
+	}
+
+	if (display->flags & DISPLAY_FLAGS_PIXDATA_POSEDGE)
+		ep952_set_bit(ep952, EP952_CTL1_REG, EP952_CTL1_EDGE);
+	else
+		ep952_clr_bit(ep952, EP952_CTL1_REG, EP952_CTL1_EDGE);
+
+	ep952_set_bit(ep952, EP952_IIS_CTL_REG, EP952_IIS_CTL_AVI_EN);
+	ep952_clr_bit(ep952, EP952_CS_CTL_REG, EP952_CS_CTL_VMUTE);
 }
 
 static void ep952_disable(struct drm_bridge *bridge)
 {
+	struct ep952 *ep952 = bridge_to_ep952(bridge);
+
+	ep952_set_bit(ep952, EP952_CS_CTL_REG, EP952_CS_CTL_VMUTE);
 }
 
 static int ep952_attach(struct drm_bridge *bridge)
