@@ -17,15 +17,67 @@
 	chosen {
 		stdout-path = "serial0:115200n8";
 	};
+
+	connector {
+		compatible = "hdmi-connector";
+		ddc-i2c-bus = <&i2c1>;
+		type = "a";
+
+		port {
+			hdmi_con_in: endpoint {
+				remote-endpoint = <&ep952_out>;
+			};
+		};
+	};
 };
 
-&uart0 {
-	/*
-	 * UART0 is available on two ports: PB and PF, both are accessible.
-	 * PF can also be used for the SD card so PB is preferred.
-	 */
+&be0 {
+	status = "okay";
+};
+
+&i2c0 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&uart0_pins_a>;
+	pinctrl-0 = <&i2c0_pins_a>;
+	status = "okay";
+
+	bridge@29 {
+		compatible = "explore,ep952";
+		reg = <0x29>
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+
+				ep952_in: endpoint {
+					remote-endpoint = <&tcon0_out_hdmi>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+
+				ep952_out: endpoint {
+					remote-endpoint = <&hdmi_con_in>;
+				};
+			};
+		};
+	};
+};
+
+&i2c1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c1_pins_a>;
+	status = "okay";
+};
+
+&i2c2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c2_pins_a>;
 	status = "okay";
 };
 
@@ -42,6 +94,29 @@
 		nand-ecc-strength = <16>;
 		nand-ecc-step-size = <1024>;
 	};
+};
+
+&tcon0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&lcd_rgb888_pins>;
+	status = "okay";
+};
+
+&tcon0_out {
+	tcon0_out_hdmi: endpoint@0 {
+		reg = <0>;
+		remote-endpoint = <&ep952_in>;
+	};
+};
+
+&uart0 {
+	/*
+	 * UART0 is available on two ports: PB and PF, both are accessible.
+	 * PF can also be used for the SD card so PB is preferred.
+	 */
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_pins_a>;
+	status = "okay";
 };
 
 &usb_otg {
