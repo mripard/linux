@@ -42,7 +42,7 @@
 
 	bridge@29 {
 		compatible = "explore,ep952";
-		reg = <0x29>
+		reg = <0x29>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 
