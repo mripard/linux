@@ -36,6 +36,7 @@
 
 #define EP952_IIS_CTL_REG		0x3f
 #define EP952_IIS_CTL_AVI_EN			BIT(6)
+#define EP952_IIS_CTL_GC_EN			BIT(4)
 
 #define EP952_AVI_INFOFRAME_REG(reg)	(0x66 + (reg))
 
@@ -46,7 +47,6 @@ struct ep952 {
 	struct i2c_adapter		*ddc;
 	struct gpio_desc		*reset;
 
-	const struct drm_display_mode	*current_mode;
 	bool				hdmi_mode;
 };
 
@@ -135,9 +135,9 @@ static void ep952_hw_reset(struct ep952 *ep952)
 	msleep(10);
 }
 
-static void ep952_write_infoframes(struct ep952 *ep952)
+static void ep952_write_infoframes(struct ep952 *ep952,
+				   const struct drm_display_mode *mode)
 {
-	const struct drm_display_mode *mode = ep952->current_mode;
 	struct hdmi_avi_infoframe frame;
 	u8 avi_buf[HDMI_INFOFRAME_SIZE(AVI)];
 	int i, ret;
@@ -165,6 +165,7 @@ static void ep952_write_infoframes(struct ep952 *ep952)
 
 static void ep952_enable(struct drm_bridge *bridge)
 {
+	struct drm_display_mode *mode = &bridge->encoder->crtc->state->adjusted_mode;
 	struct ep952 *ep952 = bridge_to_ep952(bridge);
 
 	ep952_hw_reset(ep952);
@@ -177,26 +178,24 @@ static void ep952_enable(struct drm_bridge *bridge)
 	ep952_set_bit(ep952, EP952_CTL1_REG, EP952_CTL1_INT_OD);
 	
 	if (ep952->hdmi_mode)
-		ep952_write_infoframes(ep952);
+		ep952_write_infoframes(ep952, mode);
 
 	/* TODO: Write Channel Status Register to 0 (5 0 bytes, to 0x7b) */
 
 	if (ep952->hdmi_mode)
 		ep952_write_reg(ep952, EP952_CTL4_REG, EP952_CTL4_HDMI);
 
-	if (display->flags & DISPLAY_FLAGS_PIXDATA_POSEDGE)
-		ep952_set_bit(ep952, EP952_CTL1_REG, EP952_CTL1_EDGE);
-	else
-		ep952_clr_bit(ep952, EP952_CTL1_REG, EP952_CTL1_EDGE);
+	/* Set the pixel data sampling on positive edge */
+	ep952_set_bit(ep952, EP952_CTL1_REG, EP952_CTL1_EDGE);
 
 	ep952_set_bit(ep952, 0x33, BIT(2));
 	ep952_set_bit(ep952, 0x0c, BIT(4));
 	ep952_set_bit(ep952, 0x0c, BIT(5));
 	ep952_set_bit(ep952, EP952_IIS_CTL_REG, EP952_IIS_CTL_AVI_EN | EP952_IIS_CTL_GC_EN);
 
-	ep952_clr_bit(ep952, EP952_CS_CTL_REG, EP952_CS_CTL_VMUTE);
+	ep952_clr_bit(ep952, EP952_CS_CTL_REG, EP952_CS_CTL_V_MUTE);
 	ep952_clr_bit(ep952, 0x0d, 0x40);
-	ep952_clr_bit(ep952, EP952_CS_CTL_REG, EP952_CS_CTL_AMUTE);
+	ep952_clr_bit(ep952, EP952_CS_CTL_REG, EP952_CS_CTL_A_MUTE);
 
 	ep952_set_bit(ep952, 0x3f, 0x20);
 	ep952_set_bit(ep952, 0x3f, 0x08);
@@ -207,7 +206,7 @@ static void ep952_disable(struct drm_bridge *bridge)
 {
 	struct ep952 *ep952 = bridge_to_ep952(bridge);
 
-	ep952_set_bit(ep952, EP952_CS_CTL_REG, EP952_CS_CTL_VMUTE);
+	ep952_set_bit(ep952, EP952_CS_CTL_REG, EP952_CS_CTL_V_MUTE);
 }
 
 static int ep952_attach(struct drm_bridge *bridge)
@@ -228,11 +227,6 @@ static int ep952_attach(struct drm_bridge *bridge)
 
 	return 0;
 }
-
-static void ep952_bridge_mode_set(struct drm_bridge *bridge,
-				  struct drm_display_mode *mode,
-				  struct drm_display_mode *adj)
-{
 
 static const struct drm_bridge_funcs ep952_bridge_funcs = {
 	.attach		= ep952_attach,
