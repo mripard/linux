@@ -35,6 +35,10 @@
 	status = "okay";
 };
 
+&de {
+	status = "okay";
+};
+
 &i2c0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c0_pins_a>;
