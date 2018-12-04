@@ -57,7 +57,7 @@ static dma_addr_t cedrus_h264_mv_col_buf_addr(struct cedrus_ctx *ctx,
 					      unsigned int position,
 					      unsigned int field)
 {
-	dma_addr_t addr = ctx->codec.h264.mv_col_buf_dma - PHYS_OFFSET;
+	dma_addr_t addr = ctx->codec.h264.mv_col_buf_dma;
 
 	/* Adjust for the position */
 	addr += position * ctx->codec.h264.mv_col_buf_field_size * 2;
@@ -81,8 +81,8 @@ static void cedrus_fill_ref_pic(struct cedrus_ctx *ctx,
 	pic->bottom_field_order_cnt = bottom_field_order_cnt;
 	pic->frame_info = buf->codec.h264.pic_type << 8;
 
-	pic->luma_ptr = cedrus_buf_addr(vbuf, &ctx->dst_fmt, 0) - PHYS_OFFSET;
-	pic->chroma_ptr = cedrus_buf_addr(vbuf, &ctx->dst_fmt, 1) - PHYS_OFFSET;
+	pic->luma_ptr = cedrus_buf_addr(vbuf, &ctx->dst_fmt, 0);
+	pic->chroma_ptr = cedrus_buf_addr(vbuf, &ctx->dst_fmt, 1);
 	pic->mv_col_top_ptr = cedrus_h264_mv_col_buf_addr(ctx, position, 0);
 	pic->mv_col_bot_ptr = cedrus_h264_mv_col_buf_addr(ctx, position, 1);
 }
@@ -460,9 +460,9 @@ static void cedrus_h264_setup(struct cedrus_ctx *ctx,
 
 	cedrus_write(dev, VE_H264_SDROT_CTRL, 0);
 	cedrus_write(dev, VE_H264_EXTRA_BUFFER1,
-		     ctx->codec.h264.pic_info_buf_dma - PHYS_OFFSET);
+		     ctx->codec.h264.pic_info_buf_dma);
 	cedrus_write(dev, VE_H264_EXTRA_BUFFER2,
-		     (ctx->codec.h264.pic_info_buf_dma - PHYS_OFFSET) + 0x48000);
+		     (ctx->codec.h264.pic_info_buf_dma) + 0x48000);
 
 	cedrus_write_scaling_lists(ctx, run);
 	cedrus_write_frame_list(ctx, run);
