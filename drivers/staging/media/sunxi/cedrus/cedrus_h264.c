@@ -167,44 +167,36 @@ static void _cedrus_write_ref_list(struct cedrus_ctx *ctx,
 	const struct v4l2_ctrl_h264_decode_param *decode = run->h264.decode_param;
 	struct vb2_queue *cap_q = &ctx->fh.m2m_ctx->cap_q_ctx.q;
 	struct cedrus_dev *dev = ctx->dev;
-	u32 sram_array[CEDRUS_MAX_REF_IDX / sizeof(u32)];
+	u8 sram_array[CEDRUS_MAX_REF_IDX];
 	unsigned int size, i;
 
 	memset(sram_array, 0, sizeof(sram_array));
 
-	for (i = 0; i < num_ref; i += 4) {
-		unsigned int j;
+	for (i = 0; i < num_ref; i++) {
+		const struct v4l2_h264_dpb_entry *dpb;
+		const struct cedrus_buffer *cedrus_buf;
+		const struct vb2_v4l2_buffer *ref_buf;
+		unsigned int position;
+		int buf_idx;
+		u8 dpb_idx;
 
-		for (j = 0; j < 4; j++) {
-			const struct v4l2_h264_dpb_entry *dpb;
-			const struct cedrus_buffer *cedrus_buf;
-			const struct vb2_v4l2_buffer *ref_buf;
-			unsigned int position;
-			int buf_idx;
-			u8 ref_idx = i + j;
-			u8 dpb_idx;
+		dpb_idx = ref_list[i];
+		dpb = &decode->dpb[dpb_idx];
 
-			if (ref_idx >= num_ref)
-				break;
+		if (!(dpb->flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE))
+			continue;
 
-			dpb_idx = ref_list[ref_idx];
-			dpb = &decode->dpb[dpb_idx];
+		buf_idx = vb2_find_timestamp(cap_q, dpb->timestamp, 0);
+		if (buf_idx < 0)
+			continue;
 
-			if (!(dpb->flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE))
-				continue;
+		ref_buf = to_vb2_v4l2_buffer(ctx->dst_bufs[buf_idx]);
+		cedrus_buf = vb2_v4l2_to_cedrus_buffer(ref_buf);
+		position = cedrus_buf->codec.h264.position;
 
-			buf_idx = vb2_find_timestamp(cap_q, dpb->timestamp, 0);
-			if (buf_idx < 0)
-				continue;
-
-			ref_buf = to_vb2_v4l2_buffer(ctx->dst_bufs[buf_idx]);
-			cedrus_buf = vb2_v4l2_to_cedrus_buffer(ref_buf);
-			position = cedrus_buf->codec.h264.position;
-
-			sram_array[i] |= position << (j * 8 + 1);
-			if (ref_buf->field == V4L2_FIELD_BOTTOM)
-				sram_array[i] |= BIT(j * 8);
-		}
+		sram_array[i] |= position << 1;
+		if (ref_buf->field == V4L2_FIELD_BOTTOM)
+			sram_array[i] |= BIT(0);
 	}
 
 	size = min((unsigned int)ALIGN(num_ref, 4), sizeof(sram_array));
