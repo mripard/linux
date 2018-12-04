@@ -19,8 +19,9 @@ enum cedrus_h264_sram_off {
 	CEDRUS_SRAM_H264_FRAMEBUFFER_LIST	= 0x100,
 	CEDRUS_SRAM_H264_REF_LIST_0		= 0x190,
 	CEDRUS_SRAM_H264_REF_LIST_1		= 0x199,
-	CEDRUS_SRAM_H264_SCALING_LIST_8x8	= 0x200,
-	CEDRUS_SRAM_H264_SCALING_LIST_4x4	= 0x218,
+	CEDRUS_SRAM_H264_SCALING_LIST_8x8_0	= 0x200,
+	CEDRUS_SRAM_H264_SCALING_LIST_8x8_1	= 0x210,
+	CEDRUS_SRAM_H264_SCALING_LIST_4x4	= 0x220,
 };
 
 struct cedrus_h264_sram_ref_pic {
@@ -232,11 +233,13 @@ static void cedrus_write_scaling_lists(struct cedrus_ctx *ctx,
 		run->h264.scaling_matrix;
 	struct cedrus_dev *dev = ctx->dev;
 
-	return;
+	cedrus_h264_write_sram(dev, CEDRUS_SRAM_H264_SCALING_LIST_8x8_0,
+			       scaling->scaling_list_8x8[0],
+			       sizeof(scaling->scaling_list_8x8[0]));
 
-	cedrus_h264_write_sram(dev, CEDRUS_SRAM_H264_SCALING_LIST_8x8,
-			       scaling->scaling_list_8x8,
-			       sizeof(scaling->scaling_list_8x8));
+	cedrus_h264_write_sram(dev, CEDRUS_SRAM_H264_SCALING_LIST_8x8_1,
+			       scaling->scaling_list_8x8[1],
+			       sizeof(scaling->scaling_list_8x8[1]));
 
 	cedrus_h264_write_sram(dev, CEDRUS_SRAM_H264_SCALING_LIST_4x4,
 			       scaling->scaling_list_4x4,
