@@ -290,6 +290,7 @@ static void cedrus_write_pred_weight_table(struct cedrus_ctx *ctx,
 static void cedrus_set_params(struct cedrus_ctx *ctx,
 			      struct cedrus_run *run)
 {
+	const struct v4l2_ctrl_h264_decode_param *decode = run->h264.decode_param;
 	const struct v4l2_ctrl_h264_slice_param *slice = run->h264.slice_param;
 	const struct v4l2_ctrl_h264_pps *pps = run->h264.pps;
 	const struct v4l2_ctrl_h264_sps *sps = run->h264.sps;
@@ -355,7 +356,8 @@ static void cedrus_set_params(struct cedrus_ctx *ctx,
 	cedrus_write(dev, VE_H264_PIC_HDR, reg);
 
 	// sequence parameters
-	reg = BIT(19);
+	reg = 0;
+	reg |= (sps->chroma_format_idc & 0x7) << 19;
 	reg |= (sps->pic_width_in_mbs_minus1 & 0xff) << 8;
 	reg |= sps->pic_height_in_map_units_minus1 & 0xff;
 	if (sps->flags & V4L2_H264_SPS_FLAG_FRAME_MBS_ONLY)
@@ -368,14 +370,7 @@ static void cedrus_set_params(struct cedrus_ctx *ctx,
 
 	// slice parameters
 	reg = 0;
-	/*
-	 * FIXME: This bit marks all the frames as references. This
-	 * should probably be set based on nal_ref_idc, but the libva
-	 * doesn't pass that information along, so this is not always
-	 * available. We should find something else, maybe change the
-	 * kernel UAPI somehow?
-	 */
-	reg |= BIT(12);
+	reg |= decode->nal_ref_idc ? BIT(12) : 0;
 	reg |= (slice->slice_type & 0xf) << 8;
 	reg |= slice->cabac_init_idc & 0x3;
 	reg |= BIT(5);
