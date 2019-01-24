@@ -1711,7 +1711,13 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
     necessary parameters for configuring a stateless hardware decoding
     pipeline for H264.  The bitstream parameters are defined according
     to :ref:`h264`. Unless there's a specific comment, refer to the
-    specification for the documentation of these fields.
+    specification for the documentation of these fields, section 7.4.2.1.1
+    "Sequence Parameter Set Data Semantics".
+
+    .. note::
+
+       This compound control is not yet part of the public kernel API and
+       it is expected to change.
 
 .. c:type:: v4l2_ctrl_h264_sps
 
@@ -1783,7 +1789,13 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
     necessary parameters for configuring a stateless hardware decoding
     pipeline for H264.  The bitstream parameters are defined according
     to :ref:`h264`. Unless there's a specific comment, refer to the
-    specification for the documentation of these fields.
+    specification for the documentation of these fields, section 7.4.2.2
+    "Picture Parameter Set RBSP Semantics".
+
+    .. note::
+
+       This compound control is not yet part of the public kernel API and
+       it is expected to change.
 
 .. c:type:: v4l2_ctrl_h264_pps
 
@@ -1833,7 +1845,12 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
     the associated H264 slice data. The bitstream parameters are
     defined according to :ref:`h264`. Unless there's a specific
     comment, refer to the specification for the documentation of these
-    fields.
+    fields, section 7.4.2.1.1.1  "Scaling List Semantics".
+
+    .. note::
+
+       This compound control is not yet part of the public kernel API and
+       it is expected to change.
 
 .. c:type:: v4l2_ctrl_h264_scaling_matrix
 
@@ -1857,7 +1874,13 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
     parameters for configuring a stateless hardware decoding pipeline
     for H264.  The bitstream parameters are defined according to
     :ref:`h264`. Unless there's a specific comment, refer to the
-    specification for the documentation of these fields.
+    specification for the documentation of these fields, section 7.4.3
+    "Slice Header Semantics".
+
+    .. note::
+
+       This compound control is not yet part of the public kernel API and
+       it is expected to change.
 
 .. c:type:: v4l2_ctrl_h264_slice_param
 
@@ -1953,6 +1976,10 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
       - ``flags``
       - TODO
 
+    Unless there's a specific comment, refer to the specification for
+    the documentation of these fields, section 7.4.3.2 "Prediction
+    Weight Table Semantics".
+
 .. c:type:: v4l2_h264_pred_weight_table
 
 .. cssclass:: longtable
@@ -1971,6 +1998,10 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
     * - struct :c:type:`v4l2_h264_weight_factors`
       - ``weight_factors[2]``
       -
+
+    Unless there's a specific comment, refer to the specification for
+    the documentation of these fields, section 7.4.3.2 "Prediction
+    Weight Table Semantics".
 
 .. c:type:: v4l2_h264_weight_factors
 
@@ -2002,6 +2033,11 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
     :ref:`h264`. Unless there's a specific comment, refer to the
     specification for the documentation of these fields.
 
+    .. note::
+
+       This compound control is not yet part of the public kernel API and
+       it is expected to change.
+
 .. c:type:: v4l2_ctrl_h264_decode_param
 
 .. cssclass:: longtable
@@ -2013,19 +2049,19 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
 
     * - __u32
       - ``num_slices``
-      -
+      - Number of slices needed to decode the current frame
     * - __u8
       - ``idr_pic_flag``
-      -
+      - Is the picture an IDR picture?
     * - __u8
       - ``nal_ref_idc``
-      -
+      - NAL reference ID value coming from the NAL Unit header
     * - __s32
       - ``top_field_order_cnt``
-      -
+      - Picture Order Count for the coded top field
     * - __s32
       - ``bottom_field_order_cnt``
-      -
+      - Picture Order Count for the coded bottom field
     * - __u8
       - ``ref_pic_list_p0[32]``
       -
