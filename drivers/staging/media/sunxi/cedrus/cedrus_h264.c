@@ -112,7 +112,7 @@ static void cedrus_write_frame_list(struct cedrus_ctx *ctx,
 		if (!(dpb->flags & V4L2_H264_DPB_ENTRY_FLAG_VALID))
 			continue;
 
-		buf_idx = vb2_find_tag(cap_q, dpb->tag, 0);
+		buf_idx = vb2_find_timestamp(cap_q, dpb->timestamp, 0);
 		if (buf_idx < 0)
 			continue;
 
@@ -193,7 +193,7 @@ static void _cedrus_write_ref_list(struct cedrus_ctx *ctx,
 			if (!(dpb->flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE))
 				continue;
 
-			buf_idx = vb2_find_tag(cap_q, dpb->tag, 0);
+			buf_idx = vb2_find_timestamp(cap_q, dpb->timestamp, 0);
 			if (buf_idx < 0)
 				continue;
 
