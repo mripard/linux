@@ -232,10 +232,6 @@
 #define VE_DEC_MPEG_ROT_LUMA			(VE_ENGINE_DEC_MPEG + 0xcc)
 #define VE_DEC_MPEG_ROT_CHROMA			(VE_ENGINE_DEC_MPEG + 0xd0)
 
-/*  FIXME: Legacy below. */
-
-#define VBV_SIZE                       (1024 * 1024)
-
 #define VE_H264_FRAME_SIZE		0x200
 #define VE_H264_PIC_HDR			0x204
 #define VE_H264_SLICE_HDR		0x208

@@ -35,9 +35,9 @@ struct cedrus_h264_sram_ref_pic {
 	__le32	reserved;
 } __packed;
 
-/* One for the output, 16 for the reference images */
-#define CEDRUS_H264_FRAME_NUM		17
+#define CEDRUS_H264_FRAME_NUM		18
 
+#define CEDRUS_NEIGHBOR_INFO_BUF_SIZE	(16 * SZ_1K)
 #define CEDRUS_PIC_INFO_BUF_SIZE	(128 * SZ_1K)
 
 static void cedrus_h264_write_sram(struct cedrus_dev *dev,
@@ -95,6 +95,7 @@ static void cedrus_write_frame_list(struct cedrus_ctx *ctx,
 	const struct v4l2_ctrl_h264_decode_param *dec_param = run->h264.decode_param;
 	const struct v4l2_ctrl_h264_slice_param *slice = run->h264.slice_param;
 	const struct v4l2_ctrl_h264_sps *sps = run->h264.sps;
+	const struct vb2_buffer *dst_buf = &run->dst->vb2_buf;
 	struct vb2_queue *cap_q = &ctx->fh.m2m_ctx->cap_q_ctx.q;
 	struct cedrus_buffer *output_buf;
 	struct cedrus_dev *dev = ctx->dev;
@@ -113,7 +114,11 @@ static void cedrus_write_frame_list(struct cedrus_ctx *ctx,
 		if (!(dpb->flags & V4L2_H264_DPB_ENTRY_FLAG_VALID))
 			continue;
 
-		buf_idx = vb2_find_timestamp(cap_q, dpb->timestamp, 0);
+		if (dst_buf->timestamp == dpb->timestamp)
+			buf_idx = dst_buf->index;
+		else
+			buf_idx = vb2_find_timestamp(cap_q, dpb->timestamp, 0);
+
 		if (buf_idx < 0)
 			continue;
 
@@ -167,6 +172,7 @@ static void _cedrus_write_ref_list(struct cedrus_ctx *ctx,
 {
 	const struct v4l2_ctrl_h264_decode_param *decode = run->h264.decode_param;
 	struct vb2_queue *cap_q = &ctx->fh.m2m_ctx->cap_q_ctx.q;
+	const struct vb2_buffer *dst_buf = &run->dst->vb2_buf;
 	struct cedrus_dev *dev = ctx->dev;
 	u8 sram_array[CEDRUS_MAX_REF_IDX];
 	unsigned int size, i;
@@ -187,7 +193,11 @@ static void _cedrus_write_ref_list(struct cedrus_ctx *ctx,
 		if (!(dpb->flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE))
 			continue;
 
-		buf_idx = vb2_find_timestamp(cap_q, dpb->timestamp, 0);
+		if (dst_buf->timestamp == dpb->timestamp)
+			buf_idx = dst_buf->index;
+		else
+			buf_idx = vb2_find_timestamp(cap_q, dpb->timestamp, 0);
+
 		if (buf_idx < 0)
 			continue;
 
@@ -294,19 +304,19 @@ static void cedrus_set_params(struct cedrus_ctx *ctx,
 	const struct v4l2_ctrl_h264_slice_param *slice = run->h264.slice_param;
 	const struct v4l2_ctrl_h264_pps *pps = run->h264.pps;
 	const struct v4l2_ctrl_h264_sps *sps = run->h264.sps;
+	struct vb2_buffer *src_buf = &run->src->vb2_buf;
 	struct cedrus_dev *dev = ctx->dev;
 	dma_addr_t src_buf_addr;
 	u32 offset = slice->header_bit_size;
 	u32 len = (slice->size * 8) - offset;
 	u32 reg;
 
-	cedrus_write(dev, 0x220, 0x02000400);
 	cedrus_write(dev, VE_H264_VLD_LEN, len);
 	cedrus_write(dev, VE_H264_VLD_OFFSET, offset);
 
-	src_buf_addr = vb2_dma_contig_plane_dma_addr(&run->src->vb2_buf, 0);
-	src_buf_addr -= PHYS_OFFSET;
-	cedrus_write(dev, VE_H264_VLD_END, src_buf_addr + VBV_SIZE - 1);
+	src_buf_addr = vb2_dma_contig_plane_dma_addr(src_buf, 0);
+	cedrus_write(dev, VE_H264_VLD_END,
+		     src_buf_addr + vb2_get_plane_payload(src_buf, 0));
 	cedrus_write(dev, VE_H264_VLD_ADDR,
 		     VE_H264_VLD_ADDR_VAL(src_buf_addr) |
 		     VE_H264_VLD_ADDR_FIRST | VE_H264_VLD_ADDR_VALID |
@@ -383,6 +393,7 @@ static void cedrus_set_params(struct cedrus_ctx *ctx,
 	cedrus_write(dev, VE_H264_SLICE_HDR, reg);
 
 	reg = 0;
+	reg |= BIT(12);
 	reg |= (slice->num_ref_idx_l0_active_minus1 & 0x1f) << 24;
 	reg |= (slice->num_ref_idx_l1_active_minus1 & 0x1f) << 16;
 	reg |= (slice->disable_deblocking_filter_idc & 0x3) << 8;
@@ -452,7 +463,7 @@ static void cedrus_h264_setup(struct cedrus_ctx *ctx,
 	cedrus_write(dev, VE_H264_EXTRA_BUFFER1,
 		     ctx->codec.h264.pic_info_buf_dma);
 	cedrus_write(dev, VE_H264_EXTRA_BUFFER2,
-		     (ctx->codec.h264.pic_info_buf_dma) + 0x48000);
+		     ctx->codec.h264.neighbor_info_buf_dma);
 
 	cedrus_write_scaling_lists(ctx, run);
 	cedrus_write_frame_list(ctx, run);
@@ -467,6 +478,12 @@ static int cedrus_h264_start(struct cedrus_ctx *ctx)
 	unsigned int mv_col_size;
 	int ret;
 
+	/*
+	 * FIXME: It seems that the H6 cedarX code is using a formula
+	 * here based on the size of the frame, while all the older
+	 * code is using a fixed size, so that might need to be
+	 * changed at some point.
+	 */
 	ctx->codec.h264.pic_info_buf =
 		dma_alloc_coherent(dev->dev, CEDRUS_PIC_INFO_BUF_SIZE,
 				   &ctx->codec.h264.pic_info_buf_dma,
@@ -474,8 +491,40 @@ static int cedrus_h264_start(struct cedrus_ctx *ctx)
 	if (!ctx->codec.h264.pic_info_buf)
 		return -ENOMEM;
 
+	/*
+	 * That buffer is supposed to be 16kiB in size, and be aligned
+	 * on 16kiB as well. However, dma_alloc_coherent provides the
+	 * guarantee that we'll have a CPU and DMA address aligned on
+	 * the smallest page order that is greater to the requested
+	 * size, so we don't have to overallocate.
+	 */
+	ctx->codec.h264.neighbor_info_buf =
+		dma_alloc_coherent(dev->dev, CEDRUS_NEIGHBOR_INFO_BUF_SIZE,
+				   &ctx->codec.h264.neighbor_info_buf_dma,
+				   GFP_KERNEL);
+	if (!ctx->codec.h264.neighbor_info_buf) {
+		ret = -ENOMEM;
+		goto err_pic_buf;
+	}
+
 	field_size = DIV_ROUND_UP(ctx->src_fmt.width, 16) *
-		DIV_ROUND_UP(ctx->src_fmt.height, 16) * 32;
+		DIV_ROUND_UP(ctx->src_fmt.height, 16) * 16;
+
+	/*
+	 * FIXME: This is actually conditional to
+	 * V4L2_H264_SPS_FLAG_DIRECT_8X8_INFERENCE not being set, we
+	 * might have to rework this if memory efficiency ever is
+	 * something we need to work on.
+	 */
+	field_size = field_size * 2;
+
+	/*
+	 * FIXME: This is actually conditional to
+	 * V4L2_H264_SPS_FLAG_FRAME_MBS_ONLY not being set, we might
+	 * have to rework this if memory efficiency ever is something
+	 * we need to work on.
+	 */
+	field_size = field_size * 2;
 	ctx->codec.h264.mv_col_buf_field_size = field_size;
 
 	mv_col_size = field_size * 2 * CEDRUS_H264_FRAME_NUM;
@@ -486,10 +535,15 @@ static int cedrus_h264_start(struct cedrus_ctx *ctx)
 							GFP_KERNEL);
 	if (!ctx->codec.h264.mv_col_buf) {
 		ret = -ENOMEM;
-		goto err_pic_buf;
+		goto err_neighbor_buf;
 	}
 
 	return 0;
+
+err_neighbor_buf:
+	dma_free_coherent(dev->dev, CEDRUS_NEIGHBOR_INFO_BUF_SIZE,
+			  ctx->codec.h264.neighbor_info_buf,
+			  ctx->codec.h264.neighbor_info_buf_dma);
 
 err_pic_buf:
 	dma_free_coherent(dev->dev, CEDRUS_PIC_INFO_BUF_SIZE,

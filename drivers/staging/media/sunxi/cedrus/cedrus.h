@@ -108,6 +108,8 @@ struct cedrus_ctx {
 			ssize_t		mv_col_buf_size;
 			void		*pic_info_buf;
 			dma_addr_t	pic_info_buf_dma;
+			void		*neighbor_info_buf;
+			dma_addr_t	neighbor_info_buf_dma;
 		} h264;
 	} codec;
 };
