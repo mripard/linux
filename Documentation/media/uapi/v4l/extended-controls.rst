@@ -1779,7 +1779,7 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
     * - __u16
       - ``pic_height_in_map_units_minus1``
       -
-    * - __u8
+    * - __u32
       - ``flags``
       - TODO
 
@@ -1836,7 +1836,7 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
     * - __s8
       - ``second_chroma_qp_index_offset``
       -
-    * - __u8
+    * - __u16
       - ``flags``
       - TODO
 
@@ -1972,7 +1972,7 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
     * - __u8
       - ``ref_pic_list1[32]``
       -
-    * - __u8
+    * - __u32
       - ``flags``
       - TODO
 
@@ -1989,10 +1989,10 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
     :stub-columns: 0
     :widths:       1 1 2
 
-    * - __u8
+    * - __u16
       - ``luma_log2_weight_denom``
       -
-    * - __u8
+    * - __u16
       - ``chroma_log2_weight_denom``
       -
     * - struct :c:type:`v4l2_h264_weight_factors`
@@ -2050,10 +2050,10 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
     * - __u32
       - ``num_slices``
       - Number of slices needed to decode the current frame
-    * - __u8
+    * - __u16
       - ``idr_pic_flag``
       - Is the picture an IDR picture?
-    * - __u8
+    * - __u16
       - ``nal_ref_idc``
       - NAL reference ID value coming from the NAL Unit header
     * - __s32
@@ -2099,7 +2099,7 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
     * - __s32
       - ``bottom_field_order_cnt``
       -
-    * - __u8
+    * - __u32
       - ``flags``
       -
 
