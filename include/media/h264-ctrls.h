@@ -159,7 +159,7 @@ struct v4l2_ctrl_h264_slice_param {
 #define V4L2_H264_DPB_ENTRY_FLAG_LONG_TERM	0x04
 
 struct v4l2_h264_dpb_entry {
-	__u32 tag;
+	__u64 timestamp;
 	__u16 frame_num;
 	__u16 pic_num;
 	/* Note that field is indicated by v4l2_buffer.field */
