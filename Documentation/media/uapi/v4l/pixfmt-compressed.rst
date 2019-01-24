@@ -62,7 +62,7 @@ Compressed Formats
 	:ref:`media-request-api`).  Metadata associated with the frame
 	to decode are required to be passed through the
 	``V4L2_CID_MPEG_VIDEO_H264_SPS``,
-	``V4L2_CID_MPEG_VIDEO_H264_PPS`` and
+	``V4L2_CID_MPEG_VIDEO_H264_PPS``,
 	``V4L2_CID_MPEG_VIDEO_H264_SLICE_PARAMS`` and
 	``V4L2_CID_MPEG_VIDEO_H264_DECODE_PARAMS`` controls and
 	scaling matrices can optionally be specified through the
