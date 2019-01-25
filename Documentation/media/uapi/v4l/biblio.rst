@@ -131,15 +131,6 @@ ITU H.264
 
 :author:    International Telecommunication Union (http://www.itu.ch)
 
-.. _h264:
-
-ITU H.264
-=========
-
-:title:     ITU-T Recommendation H.264 "Advanced Video Coding for Generic Audiovisual Services"
-
-:author:    International Telecommunication Union (http://www.itu.ch)
-
 .. _jfif:
 
 JFIF
