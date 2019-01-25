@@ -266,7 +266,7 @@ static void cedrus_write_pred_weight_table(struct cedrus_ctx *ctx,
 	struct cedrus_dev *dev = ctx->dev;
 	int i, j, k;
 
-	cedrus_write(dev, VE_H264_PRED_WEIGHT,
+	cedrus_write(dev, VE_H264_SHS_WP,
 		     ((pred_weight->chroma_log2_weight_denom & 0xf) << 4) |
 		     ((pred_weight->luma_log2_weight_denom & 0xf) << 0));
 
