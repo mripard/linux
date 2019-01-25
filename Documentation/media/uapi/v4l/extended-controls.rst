@@ -2099,6 +2099,8 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
       - 0x00000008
       -
 
+``Prediction Weight Table``
+
     Unless there's a specific comment, refer to the specification for
     the documentation of these fields, section 7.4.3.2 "Prediction
     Weight Table Semantics".
@@ -2121,10 +2123,6 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
     * - struct :c:type:`v4l2_h264_weight_factors`
       - ``weight_factors[2]``
       -
-
-    Unless there's a specific comment, refer to the specification for
-    the documentation of these fields, section 7.4.3.2 "Prediction
-    Weight Table Semantics".
 
 .. c:type:: v4l2_h264_weight_factors
 
