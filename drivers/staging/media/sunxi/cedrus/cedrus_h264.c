@@ -356,14 +356,14 @@ static void cedrus_set_params(struct cedrus_ctx *ctx,
 	reg |= (slice->num_ref_idx_l1_active_minus1 & 0x1f) << 5;
 	reg |= (pps->weighted_bipred_idc & 0x3) << 2;
 	if (pps->flags & V4L2_H264_PPS_FLAG_ENTROPY_CODING_MODE)
-		reg |= BIT(15);
+		reg |= VE_H264_PPS_ENTROPY_CODING_MODE;
 	if (pps->flags & V4L2_H264_PPS_FLAG_WEIGHTED_PRED)
-		reg |= BIT(4);
+		reg |= VE_H264_PPS_WEIGHTED_PRED;
 	if (pps->flags & V4L2_H264_PPS_FLAG_CONSTRAINED_INTRA_PRED)
-		reg |= BIT(1);
+		reg |= VE_H264_PPS_CONSTRAINED_INTRA_PRED;
 	if (pps->flags & V4L2_H264_PPS_FLAG_TRANSFORM_8X8_MODE)
-		reg |= BIT(0);
-	cedrus_write(dev, VE_H264_PIC_HDR, reg);
+		reg |= VE_H264_PPS_TRANSFORM_8X8_MODE;
+	cedrus_write(dev, VE_H264_PPS, reg);
 
 	// sequence parameters
 	reg = 0;
@@ -371,35 +371,35 @@ static void cedrus_set_params(struct cedrus_ctx *ctx,
 	reg |= (sps->pic_width_in_mbs_minus1 & 0xff) << 8;
 	reg |= sps->pic_height_in_map_units_minus1 & 0xff;
 	if (sps->flags & V4L2_H264_SPS_FLAG_FRAME_MBS_ONLY)
-		reg |= BIT(18);
+		reg |= VE_H264_SPS_MBS_ONLY;
 	if (sps->flags & V4L2_H264_SPS_FLAG_MB_ADAPTIVE_FRAME_FIELD)
-		reg |= BIT(17);
+		reg |= VE_H264_SPS_MB_ADAPTIVE_FRAME_FIELD;
 	if (sps->flags & V4L2_H264_SPS_FLAG_DIRECT_8X8_INFERENCE)
-		reg |= BIT(16);
-	cedrus_write(dev, VE_H264_FRAME_SIZE, reg);
+		reg |= VE_H264_SPS_DIRECT_8X8_INFERENCE;
+	cedrus_write(dev, VE_H264_SPS, reg);
 
 	// slice parameters
 	reg = 0;
 	reg |= decode->nal_ref_idc ? BIT(12) : 0;
 	reg |= (slice->slice_type & 0xf) << 8;
 	reg |= slice->cabac_init_idc & 0x3;
-	reg |= BIT(5);
+	reg |= VE_H264_SHS_FIRST_SLICE_IN_PIC;
 	if (slice->flags & V4L2_H264_SLICE_FLAG_FIELD_PIC)
-		reg |= BIT(4);
+		reg |= VE_H264_SHS_FIELD_PIC;
 	if (slice->flags & V4L2_H264_SLICE_FLAG_BOTTOM_FIELD)
-		reg |= BIT(3);
+		reg |= VE_H264_SHS_BOTTOM_FIELD;
 	if (slice->flags & V4L2_H264_SLICE_FLAG_DIRECT_SPATIAL_MV_PRED)
-		reg |= BIT(2);
-	cedrus_write(dev, VE_H264_SLICE_HDR, reg);
+		reg |= VE_H264_SHS_DIRECT_SPATIAL_MV_PRED;
+	cedrus_write(dev, VE_H264_SHS, reg);
 
 	reg = 0;
-	reg |= BIT(12);
+	reg |= VE_H264_SHS2_NUM_REF_IDX_ACTIVE_OVRD;
 	reg |= (slice->num_ref_idx_l0_active_minus1 & 0x1f) << 24;
 	reg |= (slice->num_ref_idx_l1_active_minus1 & 0x1f) << 16;
 	reg |= (slice->disable_deblocking_filter_idc & 0x3) << 8;
 	reg |= (slice->slice_alpha_c0_offset_div2 & 0xf) << 4;
 	reg |= slice->slice_beta_offset_div2 & 0xf;
-	cedrus_write(dev, VE_H264_SLICE_HDR2, reg);
+	cedrus_write(dev, VE_H264_SHS2, reg);
 
 	reg = 0;
 	/*
@@ -408,48 +408,54 @@ static void cedrus_set_params(struct cedrus_ctx *ctx,
 	 * changed to support the profiles supporting custom
 	 * quantization matrices.
 	 */
-	reg |= BIT(24);
+	reg |= VE_H264_SHS_QP_SCALING_MATRIX_DEFAULT;
 	reg |= (pps->second_chroma_qp_index_offset & 0x3f) << 16;
 	reg |= (pps->chroma_qp_index_offset & 0x3f) << 8;
 	reg |= (pps->pic_init_qp_minus26 + 26 + slice->slice_qp_delta) & 0x3f;
-	cedrus_write(dev, VE_H264_QP_PARAM, reg);
+	cedrus_write(dev, VE_H264_SHS_QP, reg);
 
 	// clear status flags
 	cedrus_write(dev, VE_H264_STATUS, cedrus_read(dev, VE_H264_STATUS));
 
 	// enable int
-	reg = cedrus_read(dev, VE_H264_CTRL) | 0x7;
-	cedrus_write(dev, VE_H264_CTRL, reg);
+	reg = cedrus_read(dev, VE_H264_CTRL);
+	cedrus_write(dev, VE_H264_CTRL, reg |
+		     VE_H264_CTRL_SLICE_DECODE_INT |
+		     VE_H264_CTRL_DECODE_ERR_INT |
+		     VE_H264_CTRL_VLD_DATA_REQ_INT);
 }
 
 static enum cedrus_irq_status
 cedrus_h264_irq_status(struct cedrus_ctx *ctx)
 {
 	struct cedrus_dev *dev = ctx->dev;
-	u32 reg = cedrus_read(dev, VE_H264_STATUS) & 0x7;
+	u32 reg = cedrus_read(dev, VE_H264_STATUS);
 
-	if (!reg)
-		return CEDRUS_IRQ_NONE;
-
-	if (reg & (BIT(1) | BIT(2)))
+	if (reg & (VE_H264_STATUS_DECODE_ERR_INT |
+		   VE_H264_STATUS_VLD_DATA_REQ_INT))
 		return CEDRUS_IRQ_ERROR;
 
-	return CEDRUS_IRQ_OK;
+	if (reg & VE_H264_CTRL_SLICE_DECODE_INT)
+		return CEDRUS_IRQ_OK;
+
+	return CEDRUS_IRQ_NONE;
 }
 
 static void cedrus_h264_irq_clear(struct cedrus_ctx *ctx)
 {
 	struct cedrus_dev *dev = ctx->dev;
 
-	cedrus_write(dev, VE_H264_STATUS, GENMASK(2, 0));
+	cedrus_write(dev, VE_H264_STATUS,
+		     VE_H264_STATUS_INT_MASK);
 }
 
 static void cedrus_h264_irq_disable(struct cedrus_ctx *ctx)
 {
 	struct cedrus_dev *dev = ctx->dev;
-	u32 reg = cedrus_read(dev, VE_H264_CTRL) & ~GENMASK(2, 0);
+	u32 reg = cedrus_read(dev, VE_H264_CTRL);
 
-	cedrus_write(dev, VE_H264_CTRL, reg);
+	cedrus_write(dev, VE_H264_CTRL,
+		     reg & ~VE_H264_CTRL_INT_MASK);
 }
 
 static void cedrus_h264_setup(struct cedrus_ctx *ctx,
