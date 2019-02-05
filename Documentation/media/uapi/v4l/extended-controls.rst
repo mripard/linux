@@ -2183,15 +2183,6 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
     * - __s32
       - ``bottom_field_order_cnt``
       - Picture Order Count for the coded bottom field
-    * - __u8
-      - ``ref_pic_list_p0[32]``
-      -
-    * - __u8
-      - ``ref_pic_list_b0[32]``
-      -
-    * - __u8
-      - ``ref_pic_list_b1[32]``
-      -
     * - struct :c:type:`v4l2_h264_dpb_entry`
       - ``dpb[16]``
       -
