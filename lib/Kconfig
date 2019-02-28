@@ -625,3 +625,10 @@ config GENERIC_LIB_UCMPDI2
 
 config OBJAGG
 	tristate "objagg" if COMPILE_TEST
+
+config IMAGE_FORMATS
+	bool
+
+config IMAGE_FORMATS_SELFTESTS
+	tristate "Test image format functions"
+	depends on IMAGE_FORMATS
