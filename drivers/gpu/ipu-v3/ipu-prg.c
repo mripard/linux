@@ -14,6 +14,7 @@
 #include <drm/drm_fourcc.h>
 #include <linux/clk.h>
 #include <linux/err.h>
+#include <linux/image-formats.h>
 #include <linux/iopoll.h>
 #include <linux/mfd/syscon.h>
 #include <linux/mfd/syscon/imx6q-iomuxc-gpr.h>
@@ -132,7 +133,7 @@ EXPORT_SYMBOL_GPL(ipu_prg_present);
 bool ipu_prg_format_supported(struct ipu_soc *ipu, uint32_t format,
 			      uint64_t modifier)
 {
-	const struct drm_format_info *info = drm_format_info(format);
+	const struct image_format_info *info = image_format_drm_lookup(format);
 
 	if (info->num_planes != 1)
 		return false;
