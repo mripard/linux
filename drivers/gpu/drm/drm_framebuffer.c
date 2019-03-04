@@ -146,7 +146,7 @@ int drm_mode_addfb_ioctl(struct drm_device *dev,
 }
 
 static int fb_plane_width(int width,
-			  const struct drm_format_info *format, int plane)
+			  const struct image_format_info *format, int plane)
 {
 	if (plane == 0)
 		return width;
@@ -155,7 +155,7 @@ static int fb_plane_width(int width,
 }
 
 static int fb_plane_height(int height,
-			   const struct drm_format_info *format, int plane)
+			   const struct image_format_info *format, int plane)
 {
 	if (plane == 0)
 		return height;
@@ -166,11 +166,11 @@ static int fb_plane_height(int height,
 static int framebuffer_check(struct drm_device *dev,
 			     const struct drm_mode_fb_cmd2 *r)
 {
-	const struct drm_format_info *info;
+	const struct image_format_info *info;
 	int i;
 
 	/* check if the format is supported at all */
-	info = __drm_format_info(r->pixel_format);
+	info = __image_format_drm_lookup(r->pixel_format);
 	if (!info) {
 		struct drm_format_name_buf format_name;
 
@@ -197,7 +197,7 @@ static int framebuffer_check(struct drm_device *dev,
 		unsigned int width = fb_plane_width(r->width, info, i);
 		unsigned int height = fb_plane_height(r->height, info, i);
 		unsigned int block_size = info->char_per_block[i];
-		u64 min_pitch = drm_format_info_min_pitch(info, i, width);
+		u64 min_pitch = image_format_info_min_pitch(info, i, width);
 
 		if (!block_size && (r->modifier[i] == DRM_FORMAT_MOD_LINEAR)) {
 			DRM_DEBUG_KMS("Format requires non-linear modifier for plane %d\n", i);

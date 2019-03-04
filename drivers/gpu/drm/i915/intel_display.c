@@ -2431,15 +2431,15 @@ static unsigned int intel_fb_modifier_to_tiling(u64 fb_modifier)
  * us a ratio of one byte in the CCS for each 8x16 pixels in the
  * main surface.
  */
-static const struct drm_format_info ccs_formats[] = {
+static const struct image_format_info ccs_formats[] = {
 	{ .format = DRM_FORMAT_XRGB8888, .depth = 24, .num_planes = 2, .cpp = { 4, 1, }, .hsub = 8, .vsub = 16, },
 	{ .format = DRM_FORMAT_XBGR8888, .depth = 24, .num_planes = 2, .cpp = { 4, 1, }, .hsub = 8, .vsub = 16, },
 	{ .format = DRM_FORMAT_ARGB8888, .depth = 32, .num_planes = 2, .cpp = { 4, 1, }, .hsub = 8, .vsub = 16, },
 	{ .format = DRM_FORMAT_ABGR8888, .depth = 32, .num_planes = 2, .cpp = { 4, 1, }, .hsub = 8, .vsub = 16, },
 };
 
-static const struct drm_format_info *
-lookup_format_info(const struct drm_format_info formats[],
+static const struct image_format_info *
+lookup_format_info(const struct image_format_info formats[],
 		   int num_formats, u32 format)
 {
 	int i;
@@ -2452,7 +2452,7 @@ lookup_format_info(const struct drm_format_info formats[],
 	return NULL;
 }
 
-static const struct drm_format_info *
+static const struct image_format_info *
 intel_get_format_info(const struct drm_mode_fb_cmd2 *cmd)
 {
 	switch (cmd->modifier[0]) {
@@ -5019,7 +5019,7 @@ static int
 skl_update_scaler(struct intel_crtc_state *crtc_state, bool force_detach,
 		  unsigned int scaler_user, int *scaler_id,
 		  int src_w, int src_h, int dst_w, int dst_h,
-		  const struct drm_format_info *format, bool need_scaler)
+		  const struct image_format_info *format, bool need_scaler)
 {
 	struct intel_crtc_scaler_state *scaler_state =
 		&crtc_state->scaler_state;

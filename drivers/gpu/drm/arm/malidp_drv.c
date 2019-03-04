@@ -294,7 +294,7 @@ malidp_verify_afbc_framebuffer_size(struct drm_device *dev,
 				    const struct drm_mode_fb_cmd2 *mode_cmd)
 {
 	int n_superblocks = 0;
-	const struct drm_format_info *info;
+	const struct image_format_info *info;
 	struct drm_gem_object *objs = NULL;
 	u32 afbc_superblock_size = 0, afbc_superblock_height = 0;
 	u32 afbc_superblock_width = 0, afbc_size = 0;

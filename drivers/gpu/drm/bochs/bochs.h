@@ -107,6 +107,8 @@ static inline u64 bochs_bo_mmap_offset(struct bochs_bo *bo)
 
 /* ---------------------------------------------------------------------- */
 
+struct image_format_info;
+
 /* bochs_hw.c */
 int bochs_hw_init(struct drm_device *dev);
 void bochs_hw_fini(struct drm_device *dev);
@@ -114,7 +116,7 @@ void bochs_hw_fini(struct drm_device *dev);
 void bochs_hw_setmode(struct bochs_device *bochs,
 		      struct drm_display_mode *mode);
 void bochs_hw_setformat(struct bochs_device *bochs,
-			const struct drm_format_info *format);
+			const struct image_format_info *format);
 void bochs_hw_setbase(struct bochs_device *bochs,
 		      int x, int y, u64 addr);
 int bochs_hw_load_edid(struct bochs_device *bochs);
