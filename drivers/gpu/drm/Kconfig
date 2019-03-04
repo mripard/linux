@@ -54,6 +54,7 @@ config DRM_DEBUG_SELFTEST
 	tristate "kselftests for DRM"
 	depends on DRM
 	depends on DEBUG_KERNEL
+	select IMAGE_FORMATS_SELFTESTS
 	select PRIME_NUMBERS
 	select DRM_LIB_RANDOM
 	select DRM_KMS_HELPER
