@@ -12,6 +12,8 @@
 
 #define pr_fmt(fmt)	"[drm:%s:%d] " fmt, __func__, __LINE__
 
+#include <linux/image-formats.h>
+
 #include <uapi/drm/drm_fourcc.h>
 
 #include "msm_media_info.h"
@@ -1040,7 +1042,7 @@ int dpu_format_check_modified_format(
 		const struct drm_mode_fb_cmd2 *cmd,
 		struct drm_gem_object **bos)
 {
-	const struct drm_format_info *info;
+	const struct image_format_info *info;
 	const struct dpu_format *fmt;
 	struct dpu_hw_fmt_layout layout;
 	uint32_t bos_total_size = 0;
@@ -1052,7 +1054,7 @@ int dpu_format_check_modified_format(
 	}
 
 	fmt = to_dpu_format(msm_fmt);
-	info = drm_format_info(fmt->base.pixel_format);
+	info = image_format_drm_lookup(fmt->base.pixel_format);
 	if (!info)
 		return -EINVAL;
 
