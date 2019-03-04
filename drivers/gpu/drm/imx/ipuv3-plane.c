@@ -12,6 +12,7 @@
 #include <drm/drm_gem_cma_helper.h>
 #include <drm/drm_gem_framebuffer_helper.h>
 #include <drm/drm_plane_helper.h>
+#include <linux/image-formats.h>
 
 #include "video/imx-ipu-v3.h"
 #include "imx-drm.h"
@@ -549,7 +550,7 @@ static void ipu_plane_atomic_update(struct drm_plane *plane,
 	unsigned long alpha_eba = 0;
 	enum ipu_color_space ics;
 	unsigned int axi_id = 0;
-	const struct drm_format_info *info;
+	const struct image_format_info *info;
 	u8 burstsize, num_bursts;
 	u32 width, height;
 	int active;
@@ -626,7 +627,7 @@ static void ipu_plane_atomic_update(struct drm_plane *plane,
 
 	width = drm_rect_width(&state->src) >> 16;
 	height = drm_rect_height(&state->src) >> 16;
-	info = drm_format_info(fb->format->format);
+	info = fb->format;
 	ipu_calculate_bursts(width, info->cpp[0], fb->pitches[0],
 			     &burstsize, &num_bursts);
 

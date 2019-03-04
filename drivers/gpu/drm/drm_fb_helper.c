@@ -31,6 +31,7 @@
 
 #include <linux/console.h>
 #include <linux/dma-buf.h>
+#include <linux/image-formats.h>
 #include <linux/kernel.h>
 #include <linux/sysrq.h>
 #include <linux/slab.h>
@@ -768,7 +769,7 @@ static void drm_fb_helper_dirty_blit_real(struct drm_fb_helper *fb_helper,
 					  struct drm_clip_rect *clip)
 {
 	struct drm_framebuffer *fb = fb_helper->fb;
-	unsigned int cpp = drm_format_plane_cpp(fb->format, 0);
+	unsigned int cpp = image_format_plane_cpp(fb->format, 0);
 	size_t offset = clip->y1 * fb->pitches[0] + clip->x1 * cpp;
 	void *src = fb_helper->fbdev->screen_buffer + offset;
 	void *dst = fb_helper->buffer->vaddr + offset;
@@ -1698,8 +1699,8 @@ int drm_fb_helper_check_var(struct fb_var_screeninfo *var,
 		var->pixclock = 0;
 	}
 
-	if ((drm_format_info_block_width(fb->format, 0) > 1) ||
-	    (drm_format_info_block_height(fb->format, 0) > 1))
+	if ((image_format_block_width(fb->format, 0) > 1) ||
+	    (image_format_block_height(fb->format, 0) > 1))
 		return -EINVAL;
 
 	/*
@@ -1934,9 +1935,9 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 		DRM_DEBUG("test CRTC %d primary plane\n", i);
 
 		for (j = 0; j < plane->format_count; j++) {
-			const struct drm_format_info *fmt;
+			const struct image_format_info *fmt;
 
-			fmt = drm_format_info(plane->format_types[j]);
+			fmt = image_format_drm_lookup(plane->format_types[j]);
 
 			/*
 			 * Do not consider YUV or other complicated formats
@@ -2086,8 +2087,8 @@ void drm_fb_helper_fill_var(struct fb_info *info, struct drm_fb_helper *fb_helpe
 {
 	struct drm_framebuffer *fb = fb_helper->fb;
 
-	WARN_ON((drm_format_info_block_width(fb->format, 0) > 1) ||
-		(drm_format_info_block_height(fb->format, 0) > 1));
+	WARN_ON((image_format_block_width(fb->format, 0) > 1) ||
+		(image_format_block_height(fb->format, 0) > 1));
 	info->pseudo_palette = fb_helper->pseudo_palette;
 	info->var.xres_virtual = fb->width;
 	info->var.yres_virtual = fb->height;
