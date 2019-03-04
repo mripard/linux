@@ -3928,7 +3928,7 @@ skl_ddb_get_pipe_allocation_limits(struct drm_i915_private *dev_priv,
 }
 
 static int skl_compute_wm_params(const struct intel_crtc_state *crtc_state,
-				 int width, const struct drm_format_info *format,
+				 int width, const struct image_format_info *format,
 				 u64 modifier, unsigned int rotation,
 				 u32 plane_pixel_rate, struct skl_wm_params *wp,
 				 int color_plane);
@@ -3949,7 +3949,7 @@ skl_cursor_allocation(const struct intel_crtc_state *crtc_state,
 	struct skl_wm_params wp;
 
 	ret = skl_compute_wm_params(crtc_state, 256,
-				    drm_format_info(DRM_FORMAT_ARGB8888),
+				    image_format_drm_lookup(DRM_FORMAT_ARGB8888),
 				    DRM_FORMAT_MOD_LINEAR,
 				    DRM_MODE_ROTATE_0,
 				    crtc_state->pixel_rate, &wp, 0);
@@ -4644,7 +4644,7 @@ skl_adjusted_plane_pixel_rate(const struct intel_crtc_state *cstate,
 
 static int
 skl_compute_wm_params(const struct intel_crtc_state *crtc_state,
-		      int width, const struct drm_format_info *format,
+		      int width, const struct image_format_info *format,
 		      u64 modifier, unsigned int rotation,
 		      u32 plane_pixel_rate, struct skl_wm_params *wp,
 		      int color_plane)
