@@ -9,6 +9,8 @@
  * warranty of any kind, whether express or implied.
  */
 
+#include <linux/image-formats.h>
+
 #include "sun8i_vi_scaler.h"
 
 static const u32 lan3coefftab32_left[480] = {
@@ -869,7 +871,7 @@ static int sun8i_vi_scaler_coef_index(unsigned int step)
 
 static void sun8i_vi_scaler_set_coeff(struct regmap *map, u32 base,
 				      u32 hstep, u32 vstep,
-				      const struct drm_format_info *format)
+				      const struct image_format_info *format)
 {
 	const u32 *ch_left, *ch_right, *cy;
 	int offset, i;
@@ -926,7 +928,7 @@ void sun8i_vi_scaler_enable(struct sun8i_mixer *mixer, int layer, bool enable)
 void sun8i_vi_scaler_setup(struct sun8i_mixer *mixer, int layer,
 			   u32 src_w, u32 src_h, u32 dst_w, u32 dst_h,
 			   u32 hscale, u32 vscale, u32 hphase, u32 vphase,
-			   const struct drm_format_info *format)
+			   const struct image_format_info *format)
 {
 	u32 chphase, cvphase;
 	u32 insize, outsize;

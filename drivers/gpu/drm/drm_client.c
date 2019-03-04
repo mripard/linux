@@ -3,6 +3,7 @@
  * Copyright 2018 Noralf Trønnes
  */
 
+#include <linux/image-formats.h>
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/mutex.h>

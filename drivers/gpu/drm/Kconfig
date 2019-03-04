@@ -12,6 +12,7 @@ menuconfig DRM
 	select FB_CMDLINE
 	select I2C
 	select I2C_ALGOBIT
+	select IMAGE_FORMATS
 	select DMA_SHARED_BUFFER
 	select SYNC_FILE
 	help

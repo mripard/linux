@@ -32,7 +32,7 @@ static struct drm_framebuffer *mtk_drm_framebuffer_init(struct drm_device *dev,
 					const struct drm_mode_fb_cmd2 *mode,
 					struct drm_gem_object *obj)
 {
-	const struct drm_format_info *info = drm_get_format_info(dev, mode);
+	const struct image_format_info *info = drm_get_format_info(dev, mode);
 	struct drm_framebuffer *fb;
 	int ret;
 
@@ -89,7 +89,7 @@ struct drm_framebuffer *mtk_drm_mode_fb_create(struct drm_device *dev,
 					       struct drm_file *file,
 					       const struct drm_mode_fb_cmd2 *cmd)
 {
-	const struct drm_format_info *info = drm_get_format_info(dev, cmd);
+	const struct image_format_info *info = drm_get_format_info(dev, cmd);
 	struct drm_framebuffer *fb;
 	struct drm_gem_object *gem;
 	unsigned int width = cmd->width;

@@ -36,7 +36,7 @@ MODULE_PARM_DESC(spi_max, "Set a lower SPI max transfer size");
 void tinydrm_memcpy(void *dst, void *vaddr, struct drm_framebuffer *fb,
 		    struct drm_rect *clip)
 {
-	unsigned int cpp = drm_format_info_plane_cpp(fb->format, 0);
+	unsigned int cpp = image_format_plane_cpp(fb->format, 0);
 	unsigned int pitch = fb->pitches[0];
 	void *src = vaddr + (clip->y1 * pitch) + (clip->x1 * cpp);
 	size_t len = (clip->x2 - clip->x1) * cpp;

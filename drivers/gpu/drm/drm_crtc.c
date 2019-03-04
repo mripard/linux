@@ -30,6 +30,7 @@
  *      Jesse Barnes <jesse.barnes@intel.com>
  */
 #include <linux/ctype.h>
+#include <linux/image-formats.h>
 #include <linux/list.h>
 #include <linux/slab.h>
 #include <linux/export.h>

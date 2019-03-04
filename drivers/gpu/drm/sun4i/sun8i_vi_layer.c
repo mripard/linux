@@ -17,6 +17,8 @@
 #include <drm/drm_probe_helper.h>
 #include <drm/drmP.h>
 
+#include <linux/image-formats.h>
+
 #include "sun8i_vi_layer.h"
 #include "sun8i_mixer.h"
 #include "sun8i_vi_scaler.h"
@@ -75,7 +77,7 @@ static int sun8i_vi_layer_update_coord(struct sun8i_mixer *mixer, int channel,
 				       unsigned int zpos)
 {
 	struct drm_plane_state *state = plane->state;
-	const struct drm_format_info *format = state->fb->format;
+	const struct image_format_info *format = state->fb->format;
 	u32 src_w, src_h, dst_w, dst_h;
 	u32 bld_base, ch_base;
 	u32 outsize, insize;
@@ -219,7 +221,7 @@ static int sun8i_vi_layer_update_buffer(struct sun8i_mixer *mixer, int channel,
 {
 	struct drm_plane_state *state = plane->state;
 	struct drm_framebuffer *fb = state->fb;
-	const struct drm_format_info *format = fb->format;
+	const struct image_format_info *format = fb->format;
 	struct drm_gem_cma_object *gem;
 	u32 dx, dy, src_x, src_y;
 	dma_addr_t paddr;
