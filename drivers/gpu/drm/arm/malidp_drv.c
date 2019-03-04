@@ -10,6 +10,7 @@
  * ARM Mali DP500/DP550/DP650 KMS/DRM driver
  */
 
+#include <linux/image-formats.h>
 #include <linux/module.h>
 #include <linux/clk.h>
 #include <linux/component.h>

@@ -150,7 +150,7 @@ static void malidp_plane_atomic_print_state(struct drm_printer *p,
 bool malidp_format_mod_supported(struct drm_device *drm,
 				 u32 format, u64 modifier)
 {
-	const struct drm_format_info *info;
+	const struct image_format_info *info;
 	const u64 *modifiers;
 	struct malidp_drm *malidp = drm->dev_private;
 	const struct malidp_hw_regmap *map = &malidp->dev->hw->map;
@@ -201,7 +201,7 @@ bool malidp_format_mod_supported(struct drm_device *drm,
 		return false;
 	}
 
-	info = drm_format_info(format);
+	info = image_format_drm_lookup(format);
 
 	if (info->num_planes != 1) {
 		DRM_DEBUG_KMS("AFBC buffers expect one plane\n");
@@ -227,7 +227,7 @@ bool malidp_format_mod_supported(struct drm_device *drm,
 
 	if (modifier & AFBC_SPLIT) {
 		if (!info->is_yuv) {
-			if (drm_format_info_plane_cpp(info, 0) <= 2) {
+			if (image_format_info_plane_cpp(info, 0) <= 2) {
 				DRM_DEBUG_KMS("RGB formats <= 16bpp are not supported with SPLIT\n");
 				return false;
 			}
