@@ -137,6 +137,8 @@ static int cirrusfb_create_object(struct cirrus_fbdev *afbdev,
 			       const struct drm_mode_fb_cmd2 *mode_cmd,
 			       struct drm_gem_object **gobj_p)
 {
+	const struct drm_format_info *info = drm_get_format_info(dev,
+								 mode_cmd);
 	struct drm_device *dev = afbdev->helper.dev;
 	struct cirrus_device *cdev = dev->dev_private;
 	u32 bpp;
@@ -144,7 +146,7 @@ static int cirrusfb_create_object(struct cirrus_fbdev *afbdev,
 	struct drm_gem_object *gobj;
 	int ret = 0;
 
-	bpp = drm_format_plane_cpp(mode_cmd->pixel_format, 0) * 8;
+	bpp = drm_format_info_plane_cpp(info, 0) * 8;
 
 	if (!cirrus_check_framebuffer(cdev, mode_cmd->width, mode_cmd->height,
 				      bpp, mode_cmd->pitches[0]))
