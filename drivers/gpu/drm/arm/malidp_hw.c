@@ -326,12 +326,14 @@ static void malidp500_modeset(struct malidp_hw_device *hwdev, struct videomode *
 
 static int malidp500_rotmem_required(struct malidp_hw_device *hwdev, u16 w, u16 h, u32 fmt)
 {
+	const struct drm_format_info *info = drm_format_info(fmt);
+
 	/*
 	 * Each layer needs enough rotation memory to fit 8 lines
 	 * worth of pixel data. Required size is then:
 	 *    size = rotated_width * (bpp / 8) * 8;
 	 */
-	return w * drm_format_plane_cpp(fmt, 0) * 8;
+	return w * drm_format_plane_cpp(info, 0) * 8;
 }
 
 static void malidp500_se_write_pp_coefftab(struct malidp_hw_device *hwdev,

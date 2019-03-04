@@ -307,17 +307,14 @@ EXPORT_SYMBOL(drm_get_format_info);
 
 /**
  * drm_format_plane_cpp - determine the bytes per pixel value
- * @format: pixel format (DRM_FORMAT_*)
+ * @format: pixel format info
  * @plane: plane index
  *
  * Returns:
  * The bytes per pixel value for the specified plane.
  */
-int drm_format_plane_cpp(uint32_t format, int plane)
+int drm_format_plane_cpp(const struct drm_format_info *info, int plane)
 {
-	const struct drm_format_info *info;
-
-	info = drm_format_info(format);
 	if (!info || plane >= info->num_planes)
 		return 0;
 
