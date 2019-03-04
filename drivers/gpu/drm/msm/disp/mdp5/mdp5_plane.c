@@ -17,6 +17,7 @@
  */
 
 #include <drm/drm_print.h>
+#include <linux/image-formats.h>
 #include "mdp5_kms.h"
 
 struct mdp5_plane {
@@ -650,7 +651,7 @@ static int calc_scalex_steps(struct drm_plane *plane,
 		uint32_t pixel_format, uint32_t src, uint32_t dest,
 		uint32_t phasex_steps[COMP_MAX])
 {
-	const struct drm_format_info *info = drm_format_info(pixel_format);
+	const struct image_format_info *info = image_format_drm_lookup(pixel_format);
 	struct mdp5_kms *mdp5_kms = get_kms(plane);
 	struct device *dev = mdp5_kms->dev->dev;
 	uint32_t phasex_step;
@@ -673,7 +674,7 @@ static int calc_scaley_steps(struct drm_plane *plane,
 		uint32_t pixel_format, uint32_t src, uint32_t dest,
 		uint32_t phasey_steps[COMP_MAX])
 {
-	const struct drm_format_info *info = drm_format_info(pixel_format);
+	const struct image_format_info *info = image_format_drm_lookup(pixel_format);
 	struct mdp5_kms *mdp5_kms = get_kms(plane);
 	struct device *dev = mdp5_kms->dev->dev;
 	uint32_t phasey_step;
@@ -695,7 +696,7 @@ static int calc_scaley_steps(struct drm_plane *plane,
 static uint32_t get_scale_config(const struct mdp_format *format,
 		uint32_t src, uint32_t dst, bool horz)
 {
-	const struct drm_format_info *info = drm_format_info(format->base.pixel_format);
+	const struct image_format_info *info = image_format_drm_lookup(format->base.pixel_format);
 	bool scaling = format->is_yuv ? true : (src != dst);
 	uint32_t sub;
 	uint32_t ya_filter, uv_filter;
@@ -750,7 +751,7 @@ static void mdp5_write_pixel_ext(struct mdp5_kms *mdp5_kms, enum mdp5_pipe pipe,
 	uint32_t src_w, int pe_left[COMP_MAX], int pe_right[COMP_MAX],
 	uint32_t src_h, int pe_top[COMP_MAX], int pe_bottom[COMP_MAX])
 {
-	const struct drm_format_info *info = drm_format_info(format->base.pixel_format);
+	const struct image_format_info *info = image_format_drm_lookup(format->base.pixel_format);
 	uint32_t lr, tb, req;
 	int i;
 
