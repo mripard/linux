@@ -16,6 +16,7 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/image-formats.h>
 #include <drm/drm_util.h>
 
 #include "mdp5_kms.h"
@@ -127,7 +128,7 @@ uint32_t mdp5_smp_calculate(struct mdp5_smp *smp,
 		const struct mdp_format *format,
 		u32 width, bool hdecim)
 {
-	const struct drm_format_info *info = drm_format_info(format->base.pixel_format);
+	const struct image_format_info *info = image_format_drm_lookup(format->base.pixel_format);
 	struct mdp5_kms *mdp5_kms = get_kms(smp);
 	int rev = mdp5_cfg_get_hw_rev(mdp5_kms->cfg);
 	int i, hsub, nplanes, nlines;
@@ -158,7 +159,7 @@ uint32_t mdp5_smp_calculate(struct mdp5_smp *smp,
 	for (i = 0; i < nplanes; i++) {
 		int n, fetch_stride, cpp;
 
-		cpp = drm_format_info_plane_cpp(info, i);
+		cpp = image_format_plane_cpp(info, i);
 		fetch_stride = width * cpp / (i ? hsub : 1);
 
 		n = DIV_ROUND_UP(fetch_stride * nlines, smp->blk_size);

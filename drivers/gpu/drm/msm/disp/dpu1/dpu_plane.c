@@ -20,6 +20,7 @@
 
 #include <linux/debugfs.h>
 #include <linux/dma-buf.h>
+#include <linux/image-formats.h>
 
 #include <drm/drm_atomic_uapi.h>
 
@@ -557,7 +558,7 @@ static void _dpu_plane_setup_scaler(struct dpu_plane *pdpu,
 		struct dpu_plane_state *pstate,
 		const struct dpu_format *fmt, bool color_fill)
 {
-	const struct drm_format_info *info = drm_format_info(fmt->base.pixel_format);
+	const struct image_format_info *info = image_format_drm_lookup(fmt->base.pixel_format);
 
 	/* don't chroma subsample if decimating */
 	/* update scaler. calculate default config for QSEED3 */
