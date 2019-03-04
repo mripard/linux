@@ -6,6 +6,8 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/image-formats.h>
+
 #include <drm/drm_atomic.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_plane_helper.h>
@@ -76,7 +78,7 @@ static bool tegra_plane_format_mod_supported(struct drm_plane *plane,
 					     uint32_t format,
 					     uint64_t modifier)
 {
-	const struct drm_format_info *info = drm_format_info(format);
+	const struct image_format_info *info = image_format_drm_lookup(format);
 
 	if (modifier == DRM_FORMAT_MOD_LINEAR)
 		return true;
