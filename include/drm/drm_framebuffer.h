@@ -24,6 +24,7 @@
 #define __DRM_FRAMEBUFFER_H__
 
 #include <linux/ctype.h>
+#include <linux/image-formats.h>
 #include <linux/list.h>
 #include <linux/sched.h>
 
@@ -134,7 +135,7 @@ struct drm_framebuffer {
 	/**
 	 * @format: framebuffer format information
 	 */
-	const struct drm_format_info *format;
+	const struct image_format_info *format;
 	/**
 	 * @funcs: framebuffer vfunc table
 	 */

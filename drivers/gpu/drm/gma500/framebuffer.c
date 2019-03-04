@@ -225,7 +225,7 @@ static int psb_framebuffer_init(struct drm_device *dev,
 					const struct drm_mode_fb_cmd2 *mode_cmd,
 					struct gtt_range *gt)
 {
-	const struct drm_format_info *info;
+	const struct image_format_info *info;
 	int ret;
 
 	/*
