@@ -360,7 +360,7 @@ atmel_hlcdc_plane_update_general_settings(struct atmel_hlcdc_plane *plane,
 {
 	unsigned int cfg = ATMEL_HLCDC_LAYER_DMA_BLEN_INCR16 | state->ahb_id;
 	const struct atmel_hlcdc_layer_desc *desc = plane->layer.desc;
-	const struct drm_format_info *format = state->base.fb->format;
+	const struct image_format_info *format = state->base.fb->format;
 
 	/*
 	 * Rotation optimization is not working on RGB888 (rotation is still

@@ -39,7 +39,7 @@ void armada_drm_plane_calc(struct drm_plane_state *state, u32 addrs[2][3],
 	u16 pitches[3], bool interlaced)
 {
 	struct drm_framebuffer *fb = state->fb;
-	const struct drm_format_info *format = fb->format;
+	const struct image_format_info *format = fb->format;
 	unsigned int num_planes = format->num_planes;
 	unsigned int x = state->src.x1 >> 16;
 	unsigned int y = state->src.y1 >> 16;

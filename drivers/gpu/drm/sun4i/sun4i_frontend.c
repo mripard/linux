@@ -241,18 +241,18 @@ void sun4i_frontend_update_buffer(struct sun4i_frontend *frontend,
 EXPORT_SYMBOL(sun4i_frontend_update_buffer);
 
 static int
-sun4i_frontend_drm_format_to_input_fmt(const struct drm_format_info *format,
+sun4i_frontend_drm_format_to_input_fmt(const struct image_format_info *format,
 				       u32 *val)
 {
 	if (!format->is_yuv)
 		*val = SUN4I_FRONTEND_INPUT_FMT_DATA_FMT_RGB;
-	else if (drm_format_info_is_yuv_sampling_411(format))
+	else if (image_format_info_is_yuv_sampling_411(format))
 		*val = SUN4I_FRONTEND_INPUT_FMT_DATA_FMT_YUV411;
-	else if (drm_format_info_is_yuv_sampling_420(format))
+	else if (image_format_info_is_yuv_sampling_420(format))
 		*val = SUN4I_FRONTEND_INPUT_FMT_DATA_FMT_YUV420;
-	else if (drm_format_info_is_yuv_sampling_422(format))
+	else if (image_format_info_is_yuv_sampling_422(format))
 		*val = SUN4I_FRONTEND_INPUT_FMT_DATA_FMT_YUV422;
-	else if (drm_format_info_is_yuv_sampling_444(format))
+	else if (image_format_info_is_yuv_sampling_444(format))
 		*val = SUN4I_FRONTEND_INPUT_FMT_DATA_FMT_YUV444;
 	else
 		return -EINVAL;
@@ -261,7 +261,7 @@ sun4i_frontend_drm_format_to_input_fmt(const struct drm_format_info *format,
 }
 
 static int
-sun4i_frontend_drm_format_to_input_mode(const struct drm_format_info *format,
+sun4i_frontend_drm_format_to_input_mode(const struct image_format_info *format,
 					uint64_t modifier, u32 *val)
 {
 	bool tiled = (modifier == DRM_FORMAT_MOD_ALLWINNER_TILED);
@@ -287,11 +287,11 @@ sun4i_frontend_drm_format_to_input_mode(const struct drm_format_info *format,
 }
 
 static int
-sun4i_frontend_drm_format_to_input_sequence(const struct drm_format_info *format,
+sun4i_frontend_drm_format_to_input_sequence(const struct image_format_info *format,
 					    u32 *val)
 {
 	/* Planar formats have an explicit input sequence. */
-	if (drm_format_info_is_yuv_planar(format)) {
+	if (image_format_info_is_yuv_planar(format)) {
 		*val = 0;
 		return 0;
 	}
@@ -401,7 +401,7 @@ int sun4i_frontend_update_formats(struct sun4i_frontend *frontend,
 {
 	struct drm_plane_state *state = plane->state;
 	struct drm_framebuffer *fb = state->fb;
-	const struct drm_format_info *format = fb->format;
+	const struct image_format_info *format = fb->format;
 	uint64_t modifier = fb->modifier;
 	u32 out_fmt_val;
 	u32 in_fmt_val, in_mod_val, in_ps_val;

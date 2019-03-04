@@ -376,6 +376,8 @@ enum i915_cache_level {
 
 #define I915_COLOR_UNEVICTABLE (-1) /* a non-vma sharing the address space */
 
+struct image_format_info;
+
 struct intel_fbc {
 	/* This is always the inner lock when overlapping with struct_mutex and
 	 * it's the outer lock when overlapping with stolen_lock. */
@@ -432,7 +434,7 @@ struct intel_fbc {
 		} plane;
 
 		struct {
-			const struct drm_format_info *format;
+			const struct image_format_info *format;
 			unsigned int stride;
 		} fb;
 	} state_cache;
@@ -455,7 +457,7 @@ struct intel_fbc {
 		} crtc;
 
 		struct {
-			const struct drm_format_info *format;
+			const struct image_format_info *format;
 			unsigned int stride;
 		} fb;
 

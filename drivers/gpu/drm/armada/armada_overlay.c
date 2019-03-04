@@ -107,7 +107,7 @@ static void armada_drm_overlay_plane_atomic_update(struct drm_plane *plane,
 	if (old_state->src.x1 != state->src.x1 ||
 	    old_state->src.y1 != state->src.y1 ||
 	    old_state->fb != state->fb) {
-		const struct drm_format_info *format;
+		const struct image_format_info *format;
 		u16 src_x, pitches[3];
 		u32 addrs[2][3];
 

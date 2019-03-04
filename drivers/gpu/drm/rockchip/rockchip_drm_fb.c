@@ -74,8 +74,8 @@ static struct drm_framebuffer *
 rockchip_user_fb_create(struct drm_device *dev, struct drm_file *file_priv,
 			const struct drm_mode_fb_cmd2 *mode_cmd)
 {
-	const struct drm_format_info *info = drm_get_format_info(dev,
-								 mode_cmd);
+	const struct image_format_info *info = drm_get_format_info(dev,
+								   mode_cmd);
 	struct drm_framebuffer *fb;
 	struct drm_gem_object *objs[ROCKCHIP_MAX_FB_BUFFER];
 	struct drm_gem_object *obj;
@@ -98,7 +98,7 @@ rockchip_user_fb_create(struct drm_device *dev, struct drm_file *file_priv,
 
 		min_size = (height - 1) * mode_cmd->pitches[i] +
 			mode_cmd->offsets[i] +
-			width * drm_format_info_plane_cpp(info, i);
+			width * image_format_info_plane_cpp(info, i);
 
 		if (obj->size < min_size) {
 			drm_gem_object_put_unlocked(obj);

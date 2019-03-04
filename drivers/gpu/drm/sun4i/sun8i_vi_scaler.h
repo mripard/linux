@@ -9,7 +9,6 @@
 #ifndef _SUN8I_VI_SCALER_H_
 #define _SUN8I_VI_SCALER_H_
 
-#include <drm/drm_fourcc.h>
 #include "sun8i_mixer.h"
 
 #define DE2_VI_SCALER_UNIT_BASE 0x20000
@@ -69,10 +68,12 @@
 #define SUN50I_SCALER_VSU_ANGLE_SHIFT(x)		(((x) << 16) & 0xF)
 #define SUN50I_SCALER_VSU_ANGLE_OFFSET(x)		((x) & 0xFF)
 
+struct image_format_info;
+
 void sun8i_vi_scaler_enable(struct sun8i_mixer *mixer, int layer, bool enable);
 void sun8i_vi_scaler_setup(struct sun8i_mixer *mixer, int layer,
 			   u32 src_w, u32 src_h, u32 dst_w, u32 dst_h,
 			   u32 hscale, u32 vscale, u32 hphase, u32 vphase,
-			   const struct drm_format_info *format);
+			   const struct image_format_info *format);
 
 #endif
