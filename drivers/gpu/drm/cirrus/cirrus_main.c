@@ -41,13 +41,15 @@ cirrus_user_framebuffer_create(struct drm_device *dev,
 			       struct drm_file *filp,
 			       const struct drm_mode_fb_cmd2 *mode_cmd)
 {
+	const struct drm_format_info *info = drm_get_format_info(dev,
+								 mode_cmd);
 	struct cirrus_device *cdev = dev->dev_private;
 	struct drm_gem_object *obj;
 	struct drm_framebuffer *fb;
 	u32 bpp;
 	int ret;
 
-	bpp = drm_format_plane_cpp(mode_cmd->pixel_format, 0) * 8;
+	bpp = drm_format_info_plane_cpp(info, 0) * 8;
 
 	if (!cirrus_check_framebuffer(cdev, mode_cmd->width, mode_cmd->height,
 				      bpp, mode_cmd->pitches[0]))
