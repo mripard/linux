@@ -25,6 +25,7 @@
 #include <linux/vmalloc.h>
 #include <linux/export.h>
 #include <linux/clk.h>
+#include <linux/image-formats.h>
 #include <linux/io.h>
 #include <linux/jiffies.h>
 #include <linux/seq_file.h>
@@ -1898,9 +1899,9 @@ static void dispc_ovl_set_scaling_uv(struct dispc_device *dispc,
 	int scale_x = out_width != orig_width;
 	int scale_y = out_height != orig_height;
 	bool chroma_upscale = plane != OMAP_DSS_WB;
-	const struct drm_format_info *info;
+	const struct image_format_info *info;
 
-	info = drm_format_info(fourcc);
+	info = image_format_drm_lookup(fourcc);
 
 	if (!dispc_has_feature(dispc, FEAT_HANDLE_UV_SEPARATE))
 		return;
@@ -2623,9 +2624,9 @@ static int dispc_ovl_setup_common(struct dispc_device *dispc,
 	bool ilace = !!(vm->flags & DISPLAY_FLAGS_INTERLACED);
 	unsigned long pclk = dispc_plane_pclk_rate(dispc, plane);
 	unsigned long lclk = dispc_plane_lclk_rate(dispc, plane);
-	const struct drm_format_info *info;
+	const struct image_format_info *info;
 
-	info = drm_format_info(fourcc);
+	info = image_format_drm_lookup(fourcc);
 
 	/* when setting up WB, dispc_plane_pclk_rate() returns 0 */
 	if (plane == OMAP_DSS_WB)
