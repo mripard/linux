@@ -382,8 +382,8 @@ static void malidp500_modeset(struct malidp_hw_device *hwdev, struct videomode *
 
 int malidp_format_get_bpp(u32 fmt)
 {
-	const struct drm_format_info *info = drm_format_info(fmt);
-	int bpp = drm_format_info_plane_cpp(info, 0) * 8;
+	const struct image_format_info *info = image_format_drm_lookup(fmt);
+	int bpp = image_format_info_plane_cpp(info, 0) * 8;
 
 	if (bpp == 0) {
 		switch (fmt) {
