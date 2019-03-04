@@ -11,6 +11,7 @@
 #include <linux/kernel.h>
 #include <linux/component.h>
 #include <linux/err.h>
+#include <linux/image-formats.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/platform_device.h>
@@ -301,7 +302,7 @@ static inline void scaler_set_rotation(struct scaler_context *scaler,
 }
 
 static inline void scaler_set_csc(struct scaler_context *scaler,
-	const struct drm_format_info *fmt)
+	const struct image_format_info *fmt)
 {
 	static const u32 csc_mtx[2][3][3] = {
 		{ /* YCbCr to RGB */
