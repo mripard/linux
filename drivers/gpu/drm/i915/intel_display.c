@@ -8094,7 +8094,7 @@ i9xx_get_initial_plane_config(struct intel_crtc *crtc,
 
 	pixel_format = val & DISPPLANE_PIXFORMAT_MASK;
 	fourcc = i9xx_format_to_fourcc(pixel_format);
-	fb->format = drm_format_info(fourcc);
+	fb->format = image_format_drm_lookup(fourcc);
 
 	if (IS_HASWELL(dev_priv) || IS_BROADWELL(dev_priv)) {
 		offset = I915_READ(DSPOFFSET(i9xx_plane));
@@ -9194,7 +9194,7 @@ skylake_get_initial_plane_config(struct intel_crtc *crtc,
 
 	fourcc = skl_format_to_fourcc(pixel_format,
 				      val & PLANE_CTL_ORDER_RGBX, alpha);
-	fb->format = drm_format_info(fourcc);
+	fb->format = image_format_drm_lookup(fourcc);
 
 	tiling = val & PLANE_CTL_TILED_MASK;
 	switch (tiling) {
