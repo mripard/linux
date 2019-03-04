@@ -325,17 +325,15 @@ EXPORT_SYMBOL(drm_format_plane_cpp);
 /**
  * drm_format_plane_width - width of the plane given the first plane
  * @width: width of the first plane
- * @format: pixel format
+ * @format: pixel format info
  * @plane: plane index
  *
  * Returns:
  * The width of @plane, given that the width of the first plane is @width.
  */
-int drm_format_plane_width(int width, uint32_t format, int plane)
+int drm_format_plane_width(int width, const struct drm_format_info *info,
+			   int plane)
 {
-	const struct drm_format_info *info;
-
-	info = drm_format_info(format);
 	if (!info || plane >= info->num_planes)
 		return 0;
 
@@ -349,17 +347,15 @@ EXPORT_SYMBOL(drm_format_plane_width);
 /**
  * drm_format_plane_height - height of the plane given the first plane
  * @height: height of the first plane
- * @format: pixel format
+ * @format: pixel format info
  * @plane: plane index
  *
  * Returns:
  * The height of @plane, given that the height of the first plane is @height.
  */
-int drm_format_plane_height(int height, uint32_t format, int plane)
+int drm_format_plane_height(int height, const struct drm_format_info *info,
+			    int plane)
 {
-	const struct drm_format_info *info;
-
-	info = drm_format_info(format);
 	if (!info || plane >= info->num_planes)
 		return 0;
 
