@@ -29,6 +29,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
+#include <linux/image-formats.h>
 #include <linux/iopoll.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
@@ -317,7 +318,7 @@ static void scl_vop_cal_scl_fac(struct vop *vop, const struct vop_win_data *win,
 			     uint32_t src_w, uint32_t src_h, uint32_t dst_w,
 			     uint32_t dst_h, uint32_t pixel_format)
 {
-	const struct drm_format_info *info = drm_format_info(pixel_format);
+	const struct image_format_info *info = image_format_drm_lookup(pixel_format);
 	uint16_t yrgb_hor_scl_mode, yrgb_ver_scl_mode;
 	uint16_t cbcr_hor_scl_mode = SCALE_NONE;
 	uint16_t cbcr_ver_scl_mode = SCALE_NONE;
