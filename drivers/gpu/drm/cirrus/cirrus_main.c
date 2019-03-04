@@ -41,8 +41,8 @@ cirrus_user_framebuffer_create(struct drm_device *dev,
 			       struct drm_file *filp,
 			       const struct drm_mode_fb_cmd2 *mode_cmd)
 {
-	const struct drm_format_info *info = drm_get_format_info(dev,
-								 mode_cmd);
+	const struct image_format_info *info = drm_get_format_info(dev,
+								   mode_cmd);
 	struct cirrus_device *cdev = dev->dev_private;
 	struct drm_gem_object *obj;
 	struct drm_framebuffer *fb;

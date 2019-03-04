@@ -264,7 +264,7 @@ static bool
 malidp_verify_afbc_framebuffer_caps(struct drm_device *dev,
 				    const struct drm_mode_fb_cmd2 *mode_cmd)
 {
-	const struct drm_format_info *info;
+	const struct image_format_info *info;
 
 	if ((mode_cmd->modifier[0] >> 56) != DRM_FORMAT_MOD_VENDOR_ARM) {
 		DRM_DEBUG_KMS("Unknown modifier (not Arm)\n");
