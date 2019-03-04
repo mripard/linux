@@ -23,6 +23,8 @@
 #include <drm/drm_probe_helper.h>
 #include <drm/drmP.h>
 
+#include <linux/image-formats.h>
+
 #include "sun8i_ui_layer.h"
 #include "sun8i_mixer.h"
 #include "sun8i_ui_scaler.h"

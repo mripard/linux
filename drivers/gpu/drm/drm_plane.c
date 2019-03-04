@@ -20,6 +20,7 @@
  * OF THIS SOFTWARE.
  */
 
+#include <linux/image-formats.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 
