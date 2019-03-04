@@ -562,7 +562,7 @@ static int exynos_drm_ipp_check_format(struct exynos_drm_ipp_task *task,
 	if (buf->buf.width == 0 || buf->buf.height == 0)
 		return -EINVAL;
 
-	buf->format = drm_format_info(buf->buf.fourcc);
+	buf->format = image_format_drm_lookup(buf->buf.fourcc);
 	for (i = 0; i < buf->format->num_planes; i++) {
 		unsigned int width = (i == 0) ? buf->buf.width :
 			     DIV_ROUND_UP(buf->buf.width, buf->format->hsub);
