@@ -243,7 +243,7 @@ static void drm_client_buffer_delete(struct drm_client_buffer *buffer)
 static struct drm_client_buffer *
 drm_client_buffer_create(struct drm_client_dev *client, u32 width, u32 height, u32 format)
 {
-	const struct drm_format_info *info = drm_format_info(format);
+	const struct image_format_info *info = image_format_drm_lookup(format);
 	struct drm_mode_create_dumb dumb_args = { };
 	struct drm_device *dev = client->dev;
 	struct drm_client_buffer *buffer;
@@ -259,7 +259,7 @@ drm_client_buffer_create(struct drm_client_dev *client, u32 width, u32 height, u
 
 	dumb_args.width = width;
 	dumb_args.height = height;
-	dumb_args.bpp = drm_format_info_plane_cpp(info, 0) * 8;
+	dumb_args.bpp = image_format_plane_cpp(info, 0) * 8;
 	ret = drm_mode_create_dumb(dev, &dumb_args, client->file);
 	if (ret)
 		goto err_delete;
@@ -319,10 +319,10 @@ static int drm_client_buffer_addfb(struct drm_client_buffer *buffer,
 {
 	struct drm_client_dev *client = buffer->client;
 	struct drm_mode_fb_cmd fb_req = { };
-	const struct drm_format_info *info;
+	const struct image_format_info *info;
 	int ret;
 
-	info = drm_format_info(format);
+	info = image_format_drm_lookup(format);
 	fb_req.bpp = info->cpp[0] * 8;
 	fb_req.depth = info->depth;
 	fb_req.width = width;
