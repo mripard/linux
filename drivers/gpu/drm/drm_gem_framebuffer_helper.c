@@ -149,7 +149,7 @@ drm_gem_fb_create_with_funcs(struct drm_device *dev, struct drm_file *file,
 			     const struct drm_mode_fb_cmd2 *mode_cmd,
 			     const struct drm_framebuffer_funcs *funcs)
 {
-	const struct drm_format_info *info;
+	const struct image_format_info *info;
 	struct drm_gem_object *objs[4];
 	struct drm_framebuffer *fb;
 	int ret, i;
@@ -171,7 +171,7 @@ drm_gem_fb_create_with_funcs(struct drm_device *dev, struct drm_file *file,
 		}
 
 		min_size = (height - 1) * mode_cmd->pitches[i]
-			 + drm_format_info_min_pitch(info, i, width)
+			 + image_format_info_min_pitch(info, i, width)
 			 + mode_cmd->offsets[i];
 
 		if (objs[i]->size < min_size) {

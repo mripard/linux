@@ -234,7 +234,7 @@ void bochs_hw_setmode(struct bochs_device *bochs,
 }
 
 void bochs_hw_setformat(struct bochs_device *bochs,
-			const struct drm_format_info *format)
+			const struct image_format_info *format)
 {
 	DRM_DEBUG_DRIVER("format %c%c%c%c\n",
 			 (format->format >>  0) & 0xff,

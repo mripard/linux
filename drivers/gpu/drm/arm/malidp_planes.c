@@ -529,7 +529,7 @@ static int malidp_de_plane_check(struct drm_plane *plane,
 	for (i = 0; i < ms->n_planes; i++) {
 		u8 alignment = malidp_hw_get_pitch_align(mp->hwdev, rotated);
 
-		if (((fb->pitches[i] * drm_format_info_block_height(fb->format, i))
+		if (((fb->pitches[i] * image_format_info_block_height(fb->format, i))
 				& (alignment - 1)) && !(fb->modifier)) {
 			DRM_DEBUG_KMS("Invalid pitch %u for plane %d\n",
 				      fb->pitches[i], i);
@@ -537,8 +537,8 @@ static int malidp_de_plane_check(struct drm_plane *plane,
 		}
 	}
 
-	block_w = drm_format_info_block_width(fb->format, 0);
-	block_h = drm_format_info_block_height(fb->format, 0);
+	block_w = image_format_info_block_width(fb->format, 0);
+	block_h = image_format_info_block_height(fb->format, 0);
 	if (fb->width % block_w || fb->height % block_h) {
 		DRM_DEBUG_KMS("Buffer width/height needs to be a multiple of tile sizes");
 		return -EINVAL;
@@ -633,7 +633,7 @@ static void malidp_de_set_plane_pitches(struct malidp_plane *mp,
 	 * in a tile.
 	 */
 	for (i = 0; i < num_strides; ++i) {
-		unsigned int block_h = drm_format_info_block_height(mp->base.state->fb->format, i);
+		unsigned int block_h = image_format_info_block_height(mp->base.state->fb->format, i);
 
 		malidp_hw_write(mp->hwdev, pitches[i] * block_h,
 				mp->layer->base +
