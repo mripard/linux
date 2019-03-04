@@ -15,6 +15,7 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/image-formats.h>
 #include <linux/seq_file.h>
 
 #include <drm/drm_crtc.h>
@@ -60,7 +61,7 @@ struct plane {
 struct omap_framebuffer {
 	struct drm_framebuffer base;
 	int pin_count;
-	const struct drm_format_info *format;
+	const struct image_format_info *format;
 	struct plane planes[2];
 	/* lock for pinning (pin_count and planes.dma_addr) */
 	struct mutex lock;
@@ -72,7 +73,7 @@ static const struct drm_framebuffer_funcs omap_framebuffer_funcs = {
 };
 
 static u32 get_linear_addr(struct drm_framebuffer *fb,
-		const struct drm_format_info *format, int n, int x, int y)
+		const struct image_format_info *format, int n, int x, int y)
 {
 	struct omap_framebuffer *omap_fb = to_omap_framebuffer(fb);
 	struct plane *plane = &omap_fb->planes[n];
@@ -126,7 +127,7 @@ void omap_framebuffer_update_scanout(struct drm_framebuffer *fb,
 		struct drm_plane_state *state, struct omap_overlay_info *info)
 {
 	struct omap_framebuffer *omap_fb = to_omap_framebuffer(fb);
-	const struct drm_format_info *format = omap_fb->format;
+	const struct image_format_info *format = omap_fb->format;
 	struct plane *plane = &omap_fb->planes[0];
 	u32 x, y, orient = 0;
 
