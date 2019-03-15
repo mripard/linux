@@ -25,12 +25,14 @@
 #include <linux/image-formats.h>
 #include <linux/kernel.h>
 #include <linux/math64.h>
+#include <linux/videodev2.h>
 
 #include <uapi/drm/drm_fourcc.h>
 
 static const struct image_format_info formats[] = {
 	{
 		.drm_fmt = DRM_FORMAT_C8,
+		.v4l2_fmt = V4L2_PIX_FMT_GREY,
 		.depth = 8,
 		.num_planes = 1,
 		.cpp = { 1, 0, 0 },
@@ -38,6 +40,7 @@ static const struct image_format_info formats[] = {
 		.vsub = 1,
 	}, {
 		.drm_fmt = DRM_FORMAT_RGB332,
+		.v4l2_fmt = V4L2_PIX_FMT_RGB332,
 		.depth = 8,
 		.num_planes = 1,
 		.cpp = { 1, 0, 0 },
@@ -172,6 +175,7 @@ static const struct image_format_info formats[] = {
 		.has_alpha = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_RGB565,
+		.v4l2_fmt = V4L2_PIX_FMT_RGB565X,
 		.depth = 16,
 		.num_planes = 1,
 		.cpp = { 2, 0, 0 },
@@ -186,6 +190,7 @@ static const struct image_format_info formats[] = {
 		.vsub = 1,
 	}, {
 		.drm_fmt = DRM_FORMAT_RGB888,
+		.v4l2_fmt = V4L2_PIX_FMT_BGR24,
 		.depth = 24,
 		.num_planes = 1,
 		.cpp = { 3, 0, 0 },
@@ -193,6 +198,7 @@ static const struct image_format_info formats[] = {
 		.vsub = 1,
 	}, {
 		.drm_fmt = DRM_FORMAT_BGR888,
+		.v4l2_fmt = V4L2_PIX_FMT_RGB24,
 		.depth = 24,
 		.num_planes = 1,
 		.cpp = { 3, 0, 0 },
@@ -200,6 +206,7 @@ static const struct image_format_info formats[] = {
 		.vsub = 1,
 	}, {
 		.drm_fmt = DRM_FORMAT_XRGB8888,
+		.v4l2_fmt = V4L2_PIX_FMT_XBGR32,
 		.depth = 24,
 		.num_planes = 1,
 		.cpp = { 4, 0, 0 },
@@ -304,6 +311,7 @@ static const struct image_format_info formats[] = {
 		.has_alpha = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_ARGB8888,
+		.v4l2_fmt = V4L2_PIX_FMT_ABGR32,
 		.depth = 32,
 		.num_planes = 1,
 		.cpp = { 4, 0, 0 },
@@ -384,6 +392,7 @@ static const struct image_format_info formats[] = {
 		.has_alpha = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_YUV410,
+		.v4l2_fmt = V4L2_PIX_FMT_YUV410,
 		.depth = 0,
 		.num_planes = 3,
 		.cpp = { 1, 1, 1 },
@@ -392,6 +401,7 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_YVU410,
+		.v4l2_fmt = V4L2_PIX_FMT_YVU410,
 		.depth = 0,
 		.num_planes = 3,
 		.cpp = { 1, 1, 1 },
@@ -416,6 +426,7 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_YUV420,
+		.v4l2_fmt = V4L2_PIX_FMT_YUV420,
 		.depth = 0,
 		.num_planes = 3,
 		.cpp = { 1, 1, 1 },
@@ -424,6 +435,7 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_YVU420,
+		.v4l2_fmt = V4L2_PIX_FMT_YVU420,
 		.depth = 0,
 		.num_planes = 3,
 		.cpp = { 1, 1, 1 },
@@ -432,6 +444,7 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_YUV422,
+		.v4l2_fmt = V4L2_PIX_FMT_YUV422P,
 		.depth = 0,
 		.num_planes = 3,
 		.cpp = { 1, 1, 1 },
@@ -448,6 +461,7 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_YUV444,
+		.v4l2_fmt = V4L2_PIX_FMT_YUV444,
 		.depth = 0,
 		.num_planes = 3,
 		.cpp = { 1, 1, 1 },
@@ -464,6 +478,7 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_NV12,
+		.v4l2_fmt = V4L2_PIX_FMT_NV12,
 		.depth = 0,
 		.num_planes = 2,
 		.cpp = { 1, 2, 0 },
@@ -472,6 +487,7 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_NV21,
+		.v4l2_fmt = V4L2_PIX_FMT_NV21,
 		.depth = 0,
 		.num_planes = 2,
 		.cpp = { 1, 2, 0 },
@@ -480,6 +496,7 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_NV16,
+		.v4l2_fmt = V4L2_PIX_FMT_NV16,
 		.depth = 0,
 		.num_planes = 2,
 		.cpp = { 1, 2, 0 },
@@ -488,6 +505,7 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_NV61,
+		.v4l2_fmt = V4L2_PIX_FMT_NV61,
 		.depth = 0,
 		.num_planes = 2,
 		.cpp = { 1, 2, 0 },
@@ -496,6 +514,7 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_NV24,
+		.v4l2_fmt = V4L2_PIX_FMT_NV24,
 		.depth = 0,
 		.num_planes = 2,
 		.cpp = { 1, 2, 0 },
@@ -504,6 +523,7 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_NV42,
+		.v4l2_fmt = V4L2_PIX_FMT_NV42,
 		.depth = 0,
 		.num_planes = 2,
 		.cpp = { 1, 2, 0 },
@@ -512,6 +532,7 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_YUYV,
+		.v4l2_fmt = V4L2_PIX_FMT_YUYV,
 		.depth = 0,
 		.num_planes = 1,
 		.cpp = { 2, 0, 0 },
@@ -520,6 +541,7 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_YVYU,
+		.v4l2_fmt = V4L2_PIX_FMT_YVYU,
 		.depth = 0,
 		.num_planes = 1,
 		.cpp = { 2, 0, 0 },
@@ -528,6 +550,7 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_UYVY,
+		.v4l2_fmt = V4L2_PIX_FMT_UYVY,
 		.depth = 0,
 		.num_planes = 1,
 		.cpp = { 2, 0, 0 },
@@ -536,6 +559,7 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_VYUY,
+		.v4l2_fmt = V4L2_PIX_FMT_VYUY,
 		.depth = 0,
 		.num_planes = 1,
 		.cpp = { 2, 0, 0 },
@@ -653,3 +677,41 @@ const struct image_format_info *image_format_drm_lookup(u32 drm)
 	return format;
 }
 EXPORT_SYMBOL(image_format_drm_lookup);
+
+/**
+ * __image_format_v4l2_lookup - query information for a given format
+ * @v4l2: V4L2 fourcc pixel format (V4L2_PIX_FMT_*)
+ *
+ * The caller should only pass a supported pixel format to this function.
+ *
+ * Returns:
+ * The instance of struct image_format_info that describes the pixel format, or
+ * NULL if the format is unsupported.
+ */
+const struct image_format_info *__image_format_v4l2_lookup(u32 v4l2)
+{
+	return __image_format_lookup(v4l2_fmt, v4l2);
+}
+EXPORT_SYMBOL(__image_format_v4l2_lookup);
+
+/**
+ * image_format_v4l2_lookup - query information for a given format
+ * @v4l2: V4L2 fourcc pixel format (V4L2_PIX_FMT_*)
+ *
+ * The caller should only pass a supported pixel format to this function.
+ * Unsupported pixel formats will generate a warning in the kernel log.
+ *
+ * Returns:
+ * The instance of struct image_format_info that describes the pixel format, or
+ * NULL if the format is unsupported.
+ */
+const struct image_format_info *image_format_v4l2_lookup(u32 v4l2)
+{
+	const struct image_format_info *format;
+
+	format = __image_format_v4l2_lookup(v4l2);
+
+	WARN_ON(!format);
+	return format;
+}
+EXPORT_SYMBOL(image_format_v4l2_lookup);
