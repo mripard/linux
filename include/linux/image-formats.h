@@ -26,6 +26,13 @@ struct image_format_info {
 	};
 
 	/**
+	 * @v4l2_fmt:
+	 *
+	 * V4L2 4CC format identifier (V4L2_PIX_FMT_*)
+	 */
+	u32 v4l2_fmt;
+
+	/**
 	 * @depth:
 	 *
 	 * Color depth (number of bits per pixel excluding padding bits),
@@ -222,6 +229,8 @@ image_format_info_is_yuv_sampling_444(const struct image_format_info *info)
 
 const struct image_format_info *__image_format_drm_lookup(u32 drm);
 const struct image_format_info *image_format_drm_lookup(u32 drm);
+const struct image_format_info *__image_format_v4l2_lookup(u32 v4l2);
+const struct image_format_info *image_format_v4l2_lookup(u32 v4l2);
 unsigned int image_format_plane_cpp(const struct image_format_info *format,
 				    int plane);
 unsigned int image_format_plane_width(int width,
