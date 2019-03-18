@@ -5,6 +5,7 @@
  * Author: Yong Deng <yong.deng@magewell.com>
  */
 
+#include <linux/image-formats.h>
 #include <linux/of.h>
 
 #include <media/v4l2-device.h>
@@ -351,17 +352,19 @@ static int sun6i_video_try_fmt(struct sun6i_video *video,
 			       struct v4l2_format *f)
 {
 	struct v4l2_pix_format *pixfmt = &f->fmt.pix;
-	int bpp;
+	const struct image_format_info *info;
 
 	if (!is_pixformat_valid(pixfmt->pixelformat))
 		pixfmt->pixelformat = supported_pixformats[0];
 
+	info = image_format_v4l2_lookup(pixfmt->pixelformat);
+
 	v4l_bound_align_image(&pixfmt->width, MIN_WIDTH, MAX_WIDTH, 1,
 			      &pixfmt->height, MIN_HEIGHT, MAX_WIDTH, 1, 1);
 
-	bpp = sun6i_csi_get_bpp(pixfmt->pixelformat);
-	pixfmt->bytesperline = (pixfmt->width * bpp) >> 3;
-	pixfmt->sizeimage = pixfmt->bytesperline * pixfmt->height;
+	pixfmt->bytesperline = image_format_info_plane_stride(info, pixfmt->width, 0);
+	pixfmt->sizeimage = image_format_info_plane_size(info, pixfmt->width,
+							 pixfmt->height, 0);
 
 	if (pixfmt->field == V4L2_FIELD_ANY)
 		pixfmt->field = V4L2_FIELD_NONE;

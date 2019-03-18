@@ -74,11 +74,7 @@
 #define CSI_CH_SCALE_REG		0x4c
 #define CSI_CH_SCALE_QUART_EN			BIT(0)
 
-#define CSI_CH_F0_BUFA_REG		0x50
-
-#define CSI_CH_F1_BUFA_REG		0x58
-
-#define CSI_CH_F2_BUFA_REG		0x60
+#define CSI_CH_BUF_REG(plane, chan)	(0x50 + (plane) * 8 + (chan) * 4)
 
 #define CSI_CH_STA_REG			0x6c
 #define CSI_CH_STA_FIELD_STA_MASK		BIT(2)
