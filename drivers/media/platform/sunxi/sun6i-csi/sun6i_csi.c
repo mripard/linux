@@ -497,72 +497,27 @@ static void sun6i_csi_set_format(struct sun6i_csi_dev *sdev)
 static void sun6i_csi_set_window(struct sun6i_csi_dev *sdev)
 {
 	struct sun6i_csi_config *config = &sdev->csi.config;
-	u32 bytesperline_y;
-	u32 bytesperline_c;
+	const struct image_format_info *info =
+		image_format_v4l2_lookup(config->pixelformat);
 	int *planar_offset = sdev->planar_offset;
-	u32 width = config->width;
-	u32 height = config->height;
-	u32 hor_len = width;
+	u32 bytesperline_y = image_format_plane_stride(info, config->width, 0);
+	u32 bytesperline_c = image_format_plane_stride(info, config->width, 1);
+	unsigned int i;
 
-	switch (config->pixelformat) {
-	case V4L2_PIX_FMT_YUYV:
-	case V4L2_PIX_FMT_YVYU:
-	case V4L2_PIX_FMT_UYVY:
-	case V4L2_PIX_FMT_VYUY:
-		dev_dbg(sdev->dev,
-			"Horizontal length should be 2 times of width for packed YUV formats!\n");
-		hor_len = width * 2;
-		break;
-	default:
-		break;
+	offset = 0;
+	for (i = 0; i < info->num_planes; i++) {
+		planar_offset[i] = offset;
+
+		offset += info_format_plane_size(info, config->width,
+						 config->height, i);
 	}
 
 	regmap_write(sdev->regmap, CSI_CH_HSIZE_REG,
-		     CSI_CH_HSIZE_HOR_LEN(hor_len) |
+		     CSI_CH_HSIZE_HOR_LEN(bytesperline_c) |
 		     CSI_CH_HSIZE_HOR_START(0));
 	regmap_write(sdev->regmap, CSI_CH_VSIZE_REG,
-		     CSI_CH_VSIZE_VER_LEN(height) |
+		     CSI_CH_VSIZE_VER_LEN(config->height) |
 		     CSI_CH_VSIZE_VER_START(0));
-
-	planar_offset[0] = 0;
-	switch (config->pixelformat) {
-	case V4L2_PIX_FMT_HM12:
-	case V4L2_PIX_FMT_NV12:
-	case V4L2_PIX_FMT_NV21:
-	case V4L2_PIX_FMT_NV16:
-	case V4L2_PIX_FMT_NV61:
-		bytesperline_y = width;
-		bytesperline_c = width;
-		planar_offset[1] = bytesperline_y * height;
-		planar_offset[2] = -1;
-		break;
-	case V4L2_PIX_FMT_YUV420:
-	case V4L2_PIX_FMT_YVU420:
-		bytesperline_y = width;
-		bytesperline_c = width / 2;
-		planar_offset[1] = bytesperline_y * height;
-		planar_offset[2] = planar_offset[1] +
-				bytesperline_c * height / 2;
-		break;
-	case V4L2_PIX_FMT_YUV422P:
-		bytesperline_y = width;
-		bytesperline_c = width / 2;
-		planar_offset[1] = bytesperline_y * height;
-		planar_offset[2] = planar_offset[1] +
-				bytesperline_c * height;
-		break;
-	default: /* raw */
-		dev_dbg(sdev->dev,
-			"Calculating pixelformat(0x%x)'s bytesperline as a packed format\n",
-			config->pixelformat);
-		bytesperline_y = (sun6i_csi_get_bpp(config->pixelformat) *
-				  config->width) / 8;
-		bytesperline_c = 0;
-		planar_offset[1] = -1;
-		planar_offset[2] = -1;
-		break;
-	}
-
 	regmap_write(sdev->regmap, CSI_CH_BUF_LEN_REG,
 		     CSI_CH_BUF_LEN_BUF_LEN_C(bytesperline_c) |
 		     CSI_CH_BUF_LEN_BUF_LEN_Y(bytesperline_y));
@@ -588,15 +543,16 @@ int sun6i_csi_update_config(struct sun6i_csi *csi,
 void sun6i_csi_update_buf_addr(struct sun6i_csi *csi, dma_addr_t addr)
 {
 	struct sun6i_csi_dev *sdev = sun6i_csi_to_dev(csi);
+	struct sun6i_csi_config *config = &sdev->csi.config;
+	const struct image_format_info *info =
+		image_format_v4l2_lookup(config->pixelformat);
+	unsigned int i;
 
-	regmap_write(sdev->regmap, CSI_CH_F0_BUFA_REG,
-		     (addr + sdev->planar_offset[0]) >> 2);
-	if (sdev->planar_offset[1] != -1)
-		regmap_write(sdev->regmap, CSI_CH_F1_BUFA_REG,
-			     (addr + sdev->planar_offset[1]) >> 2);
-	if (sdev->planar_offset[2] != -1)
-		regmap_write(sdev->regmap, CSI_CH_F2_BUFA_REG,
-			     (addr + sdev->planar_offset[2]) >> 2);
+	for (i = 0; i < info->num_planes; i++) {
+		regmap_write(sdev->regmap, CSI_CH_BUF_REG(i, 0),
+			     (addr + sdev->planar_offset[i]) >> 2);
+
+	}
 }
 
 void sun6i_csi_set_stream(struct sun6i_csi *csi, bool enable)
