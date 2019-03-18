@@ -236,9 +236,13 @@ unsigned int image_format_plane_cpp(const struct image_format_info *format,
 unsigned int image_format_plane_width(int width,
 				      const struct image_format_info *format,
 				      int plane);
+unsigned int image_format_plane_stride(const struct image_format_info *format,
+				       int width, int plane);
 unsigned int image_format_plane_height(int height,
 				       const struct image_format_info *format,
 				       int plane);
+unsigned int image_format_plane_size(const struct image_format_info *format,
+				     int width, int height, int plane);
 unsigned int image_format_block_width(const struct image_format_info *format,
 				      int plane);
 unsigned int image_format_block_height(const struct image_format_info *format,

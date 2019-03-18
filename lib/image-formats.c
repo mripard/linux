@@ -740,6 +740,26 @@ unsigned int image_format_plane_width(int width,
 EXPORT_SYMBOL(image_format_plane_width);
 
 /**
+ * image_format_plane_stride - determine the stride value
+ * @format: pointer to the image_format
+ * @width: plane width
+ * @plane: plane index
+ *
+ * Returns:
+ * The bytes per pixel value for the specified plane.
+ */
+unsigned int image_format_plane_stride(const struct image_format_info *format,
+				       unsigned int width, int plane)
+{
+	if (!format || plane >= format->num_planes)
+		return 0;
+
+	return image_format_plane_width(width, format, plane) *
+		image_format_plane_cpp(format, plane);
+}
+EXPORT_SYMBOL(image_format_plane_stride);
+
+/**
  * image_format_plane_height - height of the plane given the first plane
  * @format: pointer to the image_format
  * @height: height of the first plane
@@ -761,6 +781,28 @@ unsigned int image_format_plane_height(int height,
 	return height / format->vsub;
 }
 EXPORT_SYMBOL(image_format_plane_height);
+
+/**
+ * image_format_plane_size - determine the size value
+ * @format: pointer to the image_format
+ * @width: plane width
+ * @height: plane width
+ * @plane: plane index
+ *
+ * Returns:
+ * The size of the plane buffer.
+ */
+unsigned int image_format_plane_size(const struct image_format_info *format,
+				     unsigned int width, unsigned int height,
+				     int plane)
+{
+	if (!format || plane >= format->num_planes)
+		return 0;
+
+	return image_format_plane_stride(format, width, plane) *
+		image_format_plane_height(format, height, plane);
+}
+EXPORT_SYMBOL(image_format_plane_size);
 
 /**
  * image_format_block_width - width in pixels of block.
