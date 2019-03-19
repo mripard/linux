@@ -1,0 +1,22 @@
+drm: Split out the formats API and move it to a common place
+
+Hi,
+
+DRM comes with an extensive format support to retrieve the various
+parameters associated with a given format (such as the subsampling, or the
+bits per pixel), as well as some helpers and utilities to ease the driver
+development.
+
+v4l2, on the other side, doesn't provide such facilities, leaving each
+driver reimplement a subset of the formats parameters for the one supported
+by that particular driver. This leads to a lot of duplication and
+boilerplate code in the v4l2 drivers.
+
+This series tries to address this by moving the DRM format API into lib and
+turning it into a more generic API. In order to do this, we've needed to do
+some preliminary changes on the DRM drivers, then moved the API and finally
+converted a v4l2 driver to give an example of how such library could be
+used.
+
+Let me know what you think,
+Maxime
