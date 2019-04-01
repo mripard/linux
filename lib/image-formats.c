@@ -31,7 +31,6 @@ static const struct image_format_info formats[] = {
 		.vsub = 1,
 	}, {
 		.drm_fmt = DRM_FORMAT_XRGB4444,
-		.v4l2_fmt = V4L2_PIX_FMT_XRGB444,
 		.depth = 0,
 		.num_planes = 1,
 		.cpp = { 2, 0, 0 },
@@ -60,7 +59,6 @@ static const struct image_format_info formats[] = {
 		.vsub = 1,
 	}, {
 		.drm_fmt = DRM_FORMAT_ARGB4444,
-		.v4l2_fmt = V4L2_PIX_FMT_ARGB444,
 		.depth = 0,
 		.num_planes = 1,
 		.cpp = { 2, 0, 0 },
@@ -93,7 +91,6 @@ static const struct image_format_info formats[] = {
 		.has_alpha = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_XRGB1555,
-		.v4l2_fmt = V4L2_PIX_FMT_XRGB555,
 		.depth = 15,
 		.num_planes = 1,
 		.cpp = { 2, 0, 0 },
@@ -122,7 +119,6 @@ static const struct image_format_info formats[] = {
 		.vsub = 1,
 	}, {
 		.drm_fmt = DRM_FORMAT_ARGB1555,
-		.v4l2_fmt = V4L2_PIX_FMT_ARGB555,
 		.depth = 15,
 		.num_planes = 1,
 		.cpp = { 2, 0, 0 },
@@ -155,7 +151,7 @@ static const struct image_format_info formats[] = {
 		.has_alpha = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_RGB565,
-		.v4l2_fmt = V4L2_PIX_FMT_RGB565,
+		.v4l2_fmt = V4L2_PIX_FMT_RGB565X,
 		.depth = 16,
 		.num_planes = 1,
 		.cpp = { 2, 0, 0 },
@@ -170,14 +166,6 @@ static const struct image_format_info formats[] = {
 		.vsub = 1,
 	}, {
 		.drm_fmt = DRM_FORMAT_RGB888,
-		.v4l2_fmt = V4L2_PIX_FMT_RGB24,
-		.depth = 24,
-		.num_planes = 1,
-		.cpp = { 3, 0, 0 },
-		.hsub = 1,
-		.vsub = 1,
-	}, {
-		.drm_fmt = DRM_FORMAT_BGR888,
 		.v4l2_fmt = V4L2_PIX_FMT_BGR24,
 		.depth = 24,
 		.num_planes = 1,
@@ -185,8 +173,16 @@ static const struct image_format_info formats[] = {
 		.hsub = 1,
 		.vsub = 1,
 	}, {
+		.drm_fmt = DRM_FORMAT_BGR888,
+		.v4l2_fmt = V4L2_PIX_FMT_RGB24,
+		.depth = 24,
+		.num_planes = 1,
+		.cpp = { 3, 0, 0 },
+		.hsub = 1,
+		.vsub = 1,
+	}, {
 		.drm_fmt = DRM_FORMAT_XRGB8888,
-		.v4l2_fmt = V4L2_PIX_FMT_XRGB32,
+		.v4l2_fmt = V4L2_PIX_FMT_XBGR32,
 		.depth = 24,
 		.num_planes = 1,
 		.cpp = { 4, 0, 0 },
@@ -291,7 +287,7 @@ static const struct image_format_info formats[] = {
 		.has_alpha = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_ARGB8888,
-		.v4l2_fmt = V4L2_PIX_FMT_ARGB32,
+		.v4l2_fmt = V4L2_PIX_FMT_ABGR32,
 		.depth = 32,
 		.num_planes = 1,
 		.cpp = { 4, 0, 0 },
@@ -406,7 +402,8 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_YUV420,
-		.v4l2_fmt = V4L2_PIX_FMT_YUV420M,
+		.v4l2_fmt = V4L2_PIX_FMT_YUV420,
+		.v4l2_mp_fmt = V4L2_PIX_FMT_YUV420M,
 		.depth = 0,
 		.num_planes = 3,
 		.cpp = { 1, 1, 1 },
@@ -415,7 +412,8 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_YVU420,
-		.v4l2_fmt = V4L2_PIX_FMT_YVU420M,
+		.v4l2_fmt = V4L2_PIX_FMT_YVU420,
+		.v4l2_mp_fmt = V4L2_PIX_FMT_YVU420M,
 		.depth = 0,
 		.num_planes = 3,
 		.cpp = { 1, 1, 1 },
@@ -424,7 +422,8 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_YUV422,
-		.v4l2_fmt = V4L2_PIX_FMT_YUV422M,
+		.v4l2_fmt = V4L2_PIX_FMT_YUV422,
+		.v4l2_mp_fmt = V4L2_PIX_FMT_YUV422M,
 		.depth = 0,
 		.num_planes = 3,
 		.cpp = { 1, 1, 1 },
@@ -433,7 +432,8 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_YVU422,
-		.v4l2_fmt = V4L2_PIX_FMT_YVU422M,
+		.v4l2_fmt = V4L2_PIX_FMT_YVU422,
+		.v4l2_mp_fmt = V4L2_PIX_FMT_YVU422M,
 		.depth = 0,
 		.num_planes = 3,
 		.cpp = { 1, 1, 1 },
@@ -442,7 +442,8 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_YUV444,
-		.v4l2_fmt = V4L2_PIX_FMT_YUV444M,
+		.v4l2_fmt = V4L2_PIX_FMT_YUV444,
+		.v4l2_mp_fmt = V4L2_PIX_FMT_YUV444M,
 		.depth = 0,
 		.num_planes = 3,
 		.cpp = { 1, 1, 1 },
@@ -451,7 +452,8 @@ static const struct image_format_info formats[] = {
 		.is_yuv = true,
 	}, {
 		.drm_fmt = DRM_FORMAT_YVU444,
-		.v4l2_fmt = V4L2_PIX_FMT_YVU444M,
+		.v4l2_fmt = V4L2_PIX_FMT_YVU444,
+		.v4l2_mp_fmt = V4L2_PIX_FMT_YVU444M,
 		.depth = 0,
 		.num_planes = 3,
 		.cpp = { 1, 1, 1 },
@@ -461,6 +463,7 @@ static const struct image_format_info formats[] = {
 	}, {
 		.drm_fmt = DRM_FORMAT_NV12,
 		.v4l2_fmt = V4L2_PIX_FMT_NV12,
+		.v4l2_mp_fmt = V4L2_PIX_FMT_NV12M,
 		.depth = 0,
 		.num_planes = 2,
 		.cpp = { 1, 2, 0 },
@@ -470,6 +473,7 @@ static const struct image_format_info formats[] = {
 	}, {
 		.drm_fmt = DRM_FORMAT_NV21,
 		.v4l2_fmt = V4L2_PIX_FMT_NV21,
+		.v4l2_mp_fmt = V4L2_PIX_FMT_NV21M,
 		.depth = 0,
 		.num_planes = 2,
 		.cpp = { 1, 2, 0 },
@@ -479,6 +483,7 @@ static const struct image_format_info formats[] = {
 	}, {
 		.drm_fmt = DRM_FORMAT_NV16,
 		.v4l2_fmt = V4L2_PIX_FMT_NV16,
+		.v4l2_mp_fmt = V4L2_PIX_FMT_NV16M,
 		.depth = 0,
 		.num_planes = 2,
 		.cpp = { 1, 2, 0 },
@@ -488,6 +493,7 @@ static const struct image_format_info formats[] = {
 	}, {
 		.drm_fmt = DRM_FORMAT_NV61,
 		.v4l2_fmt = V4L2_PIX_FMT_NV61,
+		.v4l2_mp_fmt = V4L2_PIX_FMT_NV61M,
 		.depth = 0,
 		.num_planes = 2,
 		.cpp = { 1, 2, 0 },
