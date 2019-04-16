@@ -20,3 +20,11 @@ used.
 
 Let me know what you think,
 Maxime
+
+Changes from RFC:
+
+  - Rebased on master
+  - Fixed the various formats mapping
+  - Added tags
+  - Did most of the formats functions as inline functions
+  - Used a consistent prefix for all the utilities functions
