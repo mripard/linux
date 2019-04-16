@@ -351,17 +351,20 @@ static int sun6i_video_try_fmt(struct sun6i_video *video,
 			       struct v4l2_format *f)
 {
 	struct v4l2_pix_format *pixfmt = &f->fmt.pix;
+	const struct image_format_info *info;
 	int bpp;
 
 	if (!is_pixformat_valid(pixfmt->pixelformat))
 		pixfmt->pixelformat = supported_pixformats[0];
 
+	info = image_format_v4l2_lookup(pixfmt->pixelformat);
+
 	v4l_bound_align_image(&pixfmt->width, MIN_WIDTH, MAX_WIDTH, 1,
 			      &pixfmt->height, MIN_HEIGHT, MAX_WIDTH, 1, 1);
 
-	bpp = sun6i_csi_get_bpp(pixfmt->pixelformat);
-	pixfmt->bytesperline = (pixfmt->width * bpp) >> 3;
-	pixfmt->sizeimage = pixfmt->bytesperline * pixfmt->height;
+	pixfmt->bytesperline = image_format_info_plane_stride(info, pixfmt->width, 0);
+	pixfmt->sizeimage = image_format_info_plane_size(info, pixfmt->width,
+							 pixfmt->height, 0);
 
 	if (pixfmt->field == V4L2_FIELD_ANY)
 		pixfmt->field = V4L2_FIELD_NONE;
