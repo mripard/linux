@@ -423,10 +423,14 @@ uint64_t image_format_info_min_pitch(const struct image_format_info *info,
  */
 static inline
 unsigned int image_format_info_plane_min_size(const struct image_format_info *info,
-					      unsigned int width, unsigned int height,
-					      int plane)
+					      unsigned int width,
+					      unsigned int height,
+					      unsigned int plane)
 {
-	if (!info || plane >= info->num_planes)
+	if (!info)
+		return 0;
+
+	if (plane >= info->num_planes)
 		return 0;
 
 	return image_format_info_plane_stride(info, width, plane) *
