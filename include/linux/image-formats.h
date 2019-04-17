@@ -260,9 +260,16 @@ image_format_info_is_yuv_sampling_444(const struct image_format_info *info)
  * The bytes per pixel value for the specified plane.
  */
 static inline
-int image_format_info_plane_cpp(const struct image_format_info *info, int plane)
+int image_format_info_plane_cpp(const struct image_format_info *info,
+				unsigned int plane)
 {
-	if (!info || plane >= info->num_planes)
+	if (!info)
+		return 0;
+
+	if (plane >= ARRAY_SIZE(info->cpp))
+		return 0;
+
+	if (plane >= info->num_planes)
 		return 0;
 
 	return info->cpp[plane];
@@ -278,10 +285,14 @@ int image_format_info_plane_cpp(const struct image_format_info *info, int plane)
  * The width of @plane, given that the width of the first plane is @width.
  */
 static inline
-int image_format_info_plane_width(const struct image_format_info *info, int width,
-				  int plane)
+int image_format_info_plane_width(const struct image_format_info *info,
+				  unsigned int width,
+				  unsigned int plane)
 {
-	if (!info || plane >= info->num_planes)
+	if (!info)
+		return 0;
+
+	if (plane >= info->num_planes)
 		return 0;
 
 	if (plane == 0)
@@ -300,10 +311,14 @@ int image_format_info_plane_width(const struct image_format_info *info, int widt
  * The height of @plane, given that the height of the first plane is @height.
  */
 static inline
-int image_format_info_plane_height(const struct image_format_info *info, int height,
-				   int plane)
+int image_format_info_plane_height(const struct image_format_info *info,
+				   unsigned int height,
+				   unsigned int plane)
 {
-	if (!info || plane >= info->num_planes)
+	if (!info)
+		return 0;
+
+	if (plane >= info->num_planes)
 		return 0;
 
 	if (plane == 0)
@@ -321,22 +336,22 @@ int image_format_info_plane_height(const struct image_format_info *info, int hei
  * The width in pixels of a block, depending on the plane index.
  */
 static inline
-unsigned int image_format_info_block_width(const struct image_format_info *format,
-					   int plane)
+unsigned int image_format_info_block_width(const struct image_format_info *info,
+					   unsigned int plane)
 {
-	if (!format)
+	if (!info)
 		return 0;
 
-	if (plane < 0 || plane >= ARRAY_SIZE(format->block_w))
+	if (plane >= ARRAY_SIZE(info->block_w))
 		return 0;
 
-	if (plane >= format->num_planes)
+	if (plane >= info->num_planes)
 		return 0;
 
-	if (!format->block_w[plane])
+	if (!info->block_w[plane])
 		return 1;
 
-	return format->block_w[plane];
+	return info->block_w[plane];
 }
 
 /**
@@ -348,22 +363,22 @@ unsigned int image_format_info_block_width(const struct image_format_info *forma
  * The height in pixels of a block, depending on the plane index.
  */
 static inline
-unsigned int image_format_info_block_height(const struct image_format_info *format,
-					    int plane)
+unsigned int image_format_info_block_height(const struct image_format_info *info,
+					    unsigned int plane)
 {
-	if (!format)
+	if (!info)
 		return 0;
 
-	if (plane < 0 || plane >= ARRAY_SIZE(format->block_w))
+	if (plane >= ARRAY_SIZE(info->block_h))
 		return 0;
 
-	if (plane >= format->num_planes)
+	if (plane >= info->num_planes)
 		return 0;
 
-	if (!format->block_h[plane])
+	if (!info->block_h[plane])
 		return 1;
 
-	return format->block_h[plane];
+	return info->block_h[plane];
 }
 
 /**
@@ -379,12 +394,19 @@ unsigned int image_format_info_block_height(const struct image_format_info *form
  */
 static inline
 uint64_t image_format_info_min_pitch(const struct image_format_info *info,
-				     int plane, unsigned int buffer_width)
+				     unsigned int plane,
+				     unsigned int width)
 {
-	if (!info || plane < 0 || plane >= info->num_planes)
+	if (!info)
 		return 0;
 
-	return DIV_ROUND_UP_ULL((u64)buffer_width * info->char_per_block[plane],
+	if (plane >= ARRAY_SIZE(info->char_per_block))
+		return 0;
+
+	if (plane >= info->num_planes)
+		return 0;
+
+	return DIV_ROUND_UP_ULL((u64)width * info->char_per_block[plane],
 			    image_format_info_block_width(info, plane) *
 			    image_format_info_block_height(info, plane));
 }
