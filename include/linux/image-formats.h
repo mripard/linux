@@ -389,26 +389,6 @@ uint64_t image_format_info_min_pitch(const struct image_format_info *info,
 }
 
 /**
- * image_format_info_plane_stride - determine the stride value
- * @format: pointer to the image_format_info
- * @width: plane width
- * @plane: plane index
- *
- * Returns:
- * The bytes per pixel value for the specified plane.
- */
-static inline
-unsigned int image_format_info_plane_stride(const struct image_format_info *format,
-					    unsigned int width, int plane)
-{
-	if (!format || plane >= format->num_planes)
-		return 0;
-
-	return image_format_info_plane_width(format, width, plane) *
-		image_format_info_plane_cpp(format, plane);
-}
-
-/**
  * image_format_info_plane_size - determine the size value
  * @format: pointer to the image_format_info
  * @width: plane width
