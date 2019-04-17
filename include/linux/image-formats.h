@@ -399,15 +399,15 @@ uint64_t image_format_info_min_pitch(const struct image_format_info *info,
  * The size of the plane buffer.
  */
 static inline
-unsigned int image_format_info_plane_size(const struct image_format_info *format,
+unsigned int image_format_info_plane_size(const struct image_format_info *info,
 					  unsigned int width, unsigned int height,
 					  int plane)
 {
-	if (!format || plane >= format->num_planes)
+	if (!info || plane >= info->num_planes)
 		return 0;
 
-	return image_format_info_plane_stride(format, width, plane) *
-		image_format_info_plane_height(format, height, plane);
+	return image_format_info_plane_stride(info, width, plane) *
+		image_format_info_plane_height(info, height, plane);
 }
 
 const struct image_format_info *__image_format_drm_lookup(u32 drm);
