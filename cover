@@ -22,9 +22,13 @@ Let me know what you think,
 Maxime
 
 Changes from RFC:
-
-  - Rebased on master
+  - Rebased on next
   - Fixed the various formats mapping
   - Added tags
   - Did most of the formats functions as inline functions
   - Used a consistent prefix for all the utilities functions
+  - Fixed the compilation breakages, and did a run of allmodconfig for arm,
+    arm64 and x86_64
+  - Fixed out of array bounds warnings in the image_format_info_block_*
+    functions
+  - Added License and copyright headers on missing files
