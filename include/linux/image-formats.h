@@ -373,8 +373,9 @@ unsigned int image_format_info_block_height(const struct image_format_info *form
  * @buffer_width: buffer width in pixels
  *
  * Returns:
- * The minimum required pitch in bytes for a buffer by taking into consideration
- * the pixel format information and the buffer width.
+ * The minimum required pitch in bytes (minimum number of bytes between two
+ * consecutive lines) for a buffer by taking into consideration the pixel
+ * format information and the buffer width.
  */
 static inline
 uint64_t image_format_info_min_pitch(const struct image_format_info *info,
@@ -396,12 +397,12 @@ uint64_t image_format_info_min_pitch(const struct image_format_info *info,
  * @plane: plane index
  *
  * Returns:
- * The size of the plane buffer.
+ * The minimum size in bytes of the plane buffer.
  */
 static inline
-unsigned int image_format_info_plane_size(const struct image_format_info *info,
-					  unsigned int width, unsigned int height,
-					  int plane)
+unsigned int image_format_info_plane_min_size(const struct image_format_info *info,
+					      unsigned int width, unsigned int height,
+					      int plane)
 {
 	if (!info || plane >= info->num_planes)
 		return 0;
