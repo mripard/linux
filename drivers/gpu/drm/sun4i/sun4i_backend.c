@@ -857,6 +857,7 @@ static int sun4i_backend_bind(struct device *dev, struct device *master,
 		goto err_disable_bus_clk;
 	}
 	clk_prepare_enable(backend->mod_clk);
+	clk_set_rate_exclusive(backend->mod_clk, 300000000);
 
 	backend->ram_clk = devm_clk_get(dev, "ram");
 	if (IS_ERR(backend->ram_clk)) {
@@ -932,6 +933,7 @@ static int sun4i_backend_bind(struct device *dev, struct device *master,
 err_disable_ram_clk:
 	clk_disable_unprepare(backend->ram_clk);
 err_disable_mod_clk:
+	clk_rate_exclusive_put(backend->mod_clk);
 	clk_disable_unprepare(backend->mod_clk);
 err_disable_bus_clk:
 	clk_disable_unprepare(backend->bus_clk);
@@ -952,6 +954,7 @@ static void sun4i_backend_unbind(struct device *dev, struct device *master,
 		sun4i_backend_free_sat(dev);
 
 	clk_disable_unprepare(backend->ram_clk);
+	clk_rate_exclusive_put(backend->mod_clk);
 	clk_disable_unprepare(backend->mod_clk);
 	clk_disable_unprepare(backend->bus_clk);
 	reset_control_assert(backend->reset);
