@@ -1,15 +1,9 @@
-/*******************************************************************************
+// SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+/*
  * Copyright (C) 2016-2018, Allwinner Technology CO., LTD.
- * Author: zhuxianbin <zhuxianbin@allwinnertech.com>
- *
- * This file is provided under a dual BSD/GPL license.  When using or
- * redistributing this file, you may do so under either license.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- ******************************************************************************/
+ * Copyright (C) 2019-2020, Cerno
+ */
+
 #include <linux/of_iommu.h>
 #include <linux/module.h>
 #include <linux/of_platform.h>
