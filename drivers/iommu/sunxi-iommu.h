@@ -369,7 +369,6 @@ struct sunxi_iommu {
 	struct device *dev;
 	void __iomem *base;
 	struct clk *clk;
-	int irq;
 	u32 bypass;
 	spinlock_t iommu_lock;
 };
@@ -409,5 +408,3 @@ unsigned long sunxi_iova_test_read(dma_addr_t iova);
 void sunxi_set_debug_mode(void);
 void sunxi_set_prefetch_mode(void);
 extern struct iommu_domain *global_iommu_domain;
-
-

@@ -1289,80 +1289,59 @@ static struct device_attribute sunxi_iommu_enable_attr =
 static struct device_attribute sunxi_iommu_profilling_attr =
 	__ATTR(profilling, 0444, sunxi_iommu_profilling_show, NULL);
 
-static void sunxi_iommu_sysfs_create(struct platform_device *_pdev)
-{
-	device_create_file(&_pdev->dev, &sunxi_iommu_enable_attr);
-	device_create_file(&_pdev->dev, &sunxi_iommu_profilling_attr);
-}
-
-static void sunxi_iommu_sysfs_remove(struct platform_device *_pdev)
-{
-	device_remove_file(&_pdev->dev, &sunxi_iommu_enable_attr);
-	device_remove_file(&_pdev->dev, &sunxi_iommu_profilling_attr);
-}
-
 static int sunxi_iommu_probe(struct platform_device *pdev)
 {
-	int ret, irq;
-	struct device *dev = &pdev->dev;
 	struct sunxi_iommu *iommu_dev;
 	struct resource *res;
+	int ret, irq;
 
-	iommu_dev = kzalloc(sizeof(*iommu_dev), GFP_KERNEL);
+	iommu_dev = devm_kzalloc(&pdev->dev, sizeof(*iommu_dev), GFP_KERNEL);
 	if (!iommu_dev)
-		return	-ENOMEM;
+		return -ENOMEM;
+	spin_lock_init(&iommu_dev->iommu_lock);
+	platform_set_drvdata(pdev, iommu_dev);
+	iommu_dev->dev = dev;
+
+#warning REMOVE
+	global_iommu_dev = iommu_dev;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		dev_dbg(dev, "Unable to find resource region\n");
-		ret = -ENOENT;
-		goto err_res;
-	}
-
 	iommu_dev->base = devm_ioremap_resource(&pdev->dev, res);
-	if (!iommu_dev->base) {
-		dev_dbg(dev, "Unable to map IOMEM @ PA:%#x\n",
-				(unsigned int)res->start);
-		ret = -ENOENT;
-		goto err_res;
-	}
+	if (!iommu_dev->base)
+		return PTR_ERR(iommu_dev->base);
 
+#warning REMOVE
 	iommu_dev->bypass = DEFAULT_BYPASS_VALUE;
 
 	irq = platform_get_irq(pdev, 0);
-	if (irq <= 0) {
-		dev_dbg(dev, "Unable to find IRQ resource\n");
-		goto err_irq;
-	}
+	if (irq <= 0)
+		return irq;
 
-	pr_info("sunxi iommu: irq = %d\n", irq);
-
-	ret = devm_request_irq(dev, irq, sunxi_iommu_irq, 0,
-			dev_name(dev), (void *)iommu_dev);
-	if (ret < 0) {
-		dev_dbg(dev, "Unabled to register interrupt handler\n");
-		goto err_irq;
-	}
-
-	iommu_dev->irq = irq;
-
-	iommu_dev->clk = of_clk_get_by_name(dev->of_node, "iommu");
+	iommu_dev->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(iommu_dev->clk)) {
-		iommu_dev->clk = NULL;
-		dev_dbg(dev, "Unable to find clock\n");
-		goto err_clk;
+		dev_err(&pdev->dev, "Couldn't get our clock.\n");
+		return PTR_ERR(iommu_dev->clk);
 	}
 	clk_prepare_enable(iommu_dev->clk);
 
-	platform_set_drvdata(pdev, iommu_dev);
-	iommu_dev->dev = dev;
-	spin_lock_init(&iommu_dev->iommu_lock);
-	global_iommu_dev = iommu_dev;
+	err = iommu_device_sysfs_add(&iommu->iommu, dev, NULL, dev_name(dev));
+	if (err)
+		goto err_put_group;
 
-	if (dev->parent)
-		pm_runtime_enable(dev);
+	iommu_device_set_ops(&iommu->iommu, &rk_iommu_ops);
+	iommu_device_set_fwnode(&iommu->iommu, &dev->of_node->fwnode);
 
-	sunxi_iommu_sysfs_create(pdev);
+	err = iommu_device_register(&iommu->iommu);
+	if (err)
+		goto err_remove_sysfs;
+
+	pm_runtime_enable(dev);
+	ret = devm_request_irq(dev, irq, sunxi_iommu_irq, 0,
+			       dev_name(&pdev->dev), iommu_dev);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "Couldn't register interrupt handler.\n");
+		return ret;
+	}
 
 	return 0;
 
@@ -1380,12 +1359,6 @@ err_res:
 
 static int sunxi_iommu_remove(struct platform_device *pdev)
 {
-	struct sunxi_iommu *mmu_dev = platform_get_drvdata(pdev);
-
-	sunxi_iommu_sysfs_remove(pdev);
-	free_irq(mmu_dev->irq, mmu_dev);
-	devm_iounmap(mmu_dev->dev, mmu_dev->base);
-	kfree(mmu_dev);
 	global_iommu_dev = NULL;
 	return 0;
 }
@@ -1394,7 +1367,6 @@ static const struct of_device_id sunxi_iommu_dt[] = {
 	{ .compatible = "allwinner,sunxi-iommu", },
 	{ /* sentinel */ },
 };
-
 MODULE_DEVICE_TABLE(of, sunxi_iommu_dt);
 
 static struct platform_driver sunxi_iommu_driver = {
@@ -1407,56 +1379,11 @@ static struct platform_driver sunxi_iommu_driver = {
 	}
 };
 
-static int __init sunxi_iommu_of_setup(struct device_node *np)
+static int __init sunxi_iommu_init(void)
 {
-	int ret = 0;
-	struct platform_device *pdev;
-
-	iopte_cache = kmem_cache_create("sunxi-iopte-cache", PT_SIZE,
-				PT_SIZE, SLAB_HWCACHE_ALIGN, NULL);
-	if (!iopte_cache) {
-		pr_err("%s: Failed to create sunx-iopte-cacher.\n", __func__);
-		return -ENOMEM;
-	}
-	ret = platform_driver_register(&sunxi_iommu_driver);
-	if (ret) {
-		pr_err("%s: Failed to register platform driver.\n", __func__);
-		goto err_reg_driver;
-	}
-	pdev = of_platform_device_create(np, NULL, platform_bus_type.dev_root);
-	if (IS_ERR(pdev)) {
-		ret = PTR_ERR(pdev);
-		platform_driver_unregister(&sunxi_iommu_driver);
-		kmem_cache_destroy(iopte_cache);
-		return ret;
-	}
-	ret = bus_set_iommu(&platform_bus_type, &sunxi_iommu_ops);
-	if (ret) {
-		pr_err("%s: Failed to set bus iommu.\n", __func__);
-		goto err_set_iommu;
-	}
-	of_iommu_set_ops(np, &sunxi_iommu_ops);
-	return 0;
-
-err_set_iommu:
-	platform_driver_unregister(&sunxi_iommu_driver);
-err_reg_driver:
-	kmem_cache_destroy(iopte_cache);
-	return ret;
-
+	return platform_driver_register(&sunxi_iommu_driver);
 }
-
-static void __exit sunxi_iommu_exit(void)
-{
-	kmem_cache_destroy(iopte_cache);
-	platform_driver_unregister(&sunxi_iommu_driver);
-}
-
-
-IOMMU_OF_DECLARE(sunxi_iommu_of, "allwinner,sunxi-iommu",
-		 sunxi_iommu_of_setup);
-module_exit(sunxi_iommu_exit);
-
+subsys_initcall(sunxi_iommu_init);
 
 MODULE_DESCRIPTION("IOMMU Driver for Allwinner");
 MODULE_AUTHOR("zhuxianbin <zhuxianbin@allwinnertech.com>");
