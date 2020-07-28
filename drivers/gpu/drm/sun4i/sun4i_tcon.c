@@ -475,6 +475,10 @@ static void sun4i_tcon0_mode_set_lvds(struct sun4i_tcon *tcon,
 		     SUN4I_TCON0_BASIC2_V_BACKPORCH(bp));
 
 	reg = SUN4I_TCON0_LVDS_IF_CLK_SEL_TCON0;
+
+	if (tcon->lvds_dual_link)
+		reg |= SUN4I_TCON0_LVDS_IF_DUAL_LINK;
+
 	if (sun4i_tcon_get_pixel_depth(encoder) == 24)
 		reg |= SUN4I_TCON0_LVDS_IF_BITWIDTH_24BITS;
 	else
@@ -885,6 +889,16 @@ static int sun4i_tcon_register_panel(struct drm_device *drm,
 		return sun4i_rgb_init(drm, tcon);
 
 	/*
+	 * Only the TCON0 will be relevant for the LVDS output, so if
+	 * our ID is something else, let's prevent our TCON from
+	 * registering its own LVDS output
+	 */
+	if (tcon->id) {
+		dev_dbg(dev, "TCON used as an LVDS secondary link.");
+		return 0;
+	}
+
+	/*
 	 * This can only be made optional since we've had DT
 	 * nodes without the LVDS reset properties.
 	 *
@@ -919,6 +933,28 @@ static int sun4i_tcon_register_panel(struct drm_device *drm,
 			return -ENODEV;
 		}
 	}
+
+	/*
+	 * If we don't have a second TCON, we will never be able to do
+	 * dual-link LVDS, so we don't have much more to do.
+	 */
+	companion = of_parse_phandle(dev->of_node, "link-companion", 0);
+	if (!companion)
+		return sun4i_lvds_init(drm, tcon);
+
+	/*
+	 * Let's do a sanity check on the dual-link setup to make sure
+	 * everything is properly described.
+	 */
+	ret = drm_of_lvds_get_dual_link_pixel_order(dev->of_node, 1, 0,
+						    companion, 1, 0);
+	if (ret < 0) {
+		dev_err(dev, "Invalid Dual-Link Configuration.\n");
+		return ret;
+	}
+
+	dev_info(dev, "Primary TCON, enabling LVDS Dual-Link");
+	tcon->lvds_dual_link = true;
 
 	return sun4i_lvds_init(drm, tcon);
 }

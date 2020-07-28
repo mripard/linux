@@ -98,6 +98,7 @@
 
 #define SUN4I_TCON0_LVDS_IF_REG			0x84
 #define SUN4I_TCON0_LVDS_IF_EN				BIT(31)
+#define SUN4I_TCON0_LVDS_IF_DUAL_LINK			BIT(30)
 #define SUN4I_TCON0_LVDS_IF_BITWIDTH_MASK		BIT(26)
 #define SUN4I_TCON0_LVDS_IF_BITWIDTH_18BITS		(1 << 26)
 #define SUN4I_TCON0_LVDS_IF_BITWIDTH_24BITS		(0 << 26)
@@ -280,6 +281,9 @@ struct sun4i_tcon {
 
 	/* Associated crtc */
 	struct sun4i_crtc		*crtc;
+
+	/* Is the LVDS link a dual-channel link? */
+	bool				lvds_dual_link;
 
 	int				id;
 
