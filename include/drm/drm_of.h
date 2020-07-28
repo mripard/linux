@@ -47,8 +47,12 @@ int drm_of_find_panel_or_bridge(const struct device_node *np,
 				int port, int endpoint,
 				struct drm_panel **panel,
 				struct drm_bridge **bridge);
-int drm_of_lvds_get_dual_link_pixel_order(const struct device_node *port1,
-					  const struct device_node *port2);
+int drm_of_lvds_get_dual_link_pixel_order(const struct device_node *dev1,
+					  int port1_id,
+					  int endpoint1_id,
+					  const struct device_node *dev2,
+					  int port2_id,
+					  int endpoint2_id);
 int drm_of_lvds_get_data_mapping(const struct device_node *port);
 #else
 static inline uint32_t drm_of_crtc_port_mask(struct drm_device *dev,
@@ -94,8 +98,12 @@ static inline int drm_of_find_panel_or_bridge(const struct device_node *np,
 }
 
 static inline int
-drm_of_lvds_get_dual_link_pixel_order(const struct device_node *port1,
-				      const struct device_node *port2)
+drm_of_lvds_get_dual_link_pixel_order(const struct device_node *dev1,
+				      int port1_id,
+				      int endpoint1_id,
+				      const struct device_node *dev2,
+				      int port2_id,
+				      int endpoint2_id)
 {
 	return -EINVAL;
 }

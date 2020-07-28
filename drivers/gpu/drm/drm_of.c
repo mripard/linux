@@ -303,13 +303,35 @@ static int drm_of_lvds_get_port_pixels_type(struct device_node *port_node)
 	       (odd_pixels ? DRM_OF_LVDS_ODD : 0);
 }
 
-static int drm_of_lvds_get_remote_pixels_type(
-			const struct device_node *port_node)
+static int drm_of_lvds_get_remote_pixels_type(const struct device_node *endpoint)
 {
-	struct device_node *endpoint = NULL;
-	int pixels_type = -EPIPE;
+	struct device_node *remote_port;
+	int pixels_type;
 
-	for_each_child_of_node(port_node, endpoint) {
+	remote_port = of_graph_get_remote_port(endpoint);
+	if (!remote_port)
+		return -EPIPE;
+
+	pixels_type = drm_of_lvds_get_port_pixels_type(remote_port);
+	of_node_put(remote_port);
+
+	if (pixels_type < 0)
+		return -EPIPE;
+
+	return pixels_type;
+}
+
+static int drm_of_lvds_check_remote_port(const struct device_node *dev, int id)
+{
+	struct device_node *endpoint;
+	struct device_node *port;
+	int previous_pt = -EPIPE;
+
+	port = of_graph_get_port_by_id(dev, id);
+	if (!port)
+		return -EINVAL;
+
+	for_each_child_of_node(port, endpoint) {
 		struct device_node *remote_port;
 		int current_pt;
 
@@ -318,14 +340,19 @@ static int drm_of_lvds_get_remote_pixels_type(
 
 		remote_port = of_graph_get_remote_port(endpoint);
 		if (!remote_port) {
-			of_node_put(endpoint);
+			of_node_put(port);
 			return -EPIPE;
 		}
 
 		current_pt = drm_of_lvds_get_port_pixels_type(remote_port);
 		of_node_put(remote_port);
-		if (pixels_type < 0)
-			pixels_type = current_pt;
+		if (!current_pt) {
+			of_node_put(port);
+			return -EINVAL;
+		}
+
+		if (previous_pt < 0)
+			previous_pt = current_pt;
 
 		/*
 		 * Sanity check, ensure that all remote endpoints have the same
@@ -334,19 +361,26 @@ static int drm_of_lvds_get_remote_pixels_type(
 		 * configurations by passing the endpoints explicitly to
 		 * drm_of_lvds_get_dual_link_pixel_order().
 		 */
-		if (!current_pt || pixels_type != current_pt) {
-			of_node_put(endpoint);
+		if (previous_pt != current_pt) {
+			of_node_put(port);
 			return -EINVAL;
 		}
+
+		previous_pt = current_pt;
 	}
 
-	return pixels_type;
+	of_node_put(port);
+	return previous_pt < 0 ? previous_pt : 0;
 }
 
 /**
  * drm_of_lvds_get_dual_link_pixel_order - Get LVDS dual-link pixel order
- * @port1: First DT port node of the Dual-link LVDS source
- * @port2: Second DT port node of the Dual-link LVDS source
+ * @dev1: First DT device node of the Dual-Link LVDS source
+ * @port1_id: ID of the first DT port node of the Dual-Link LVDS source
+ * @endpoint1_id: ID of the first DT port node of the Dual-Link LVDS source
+ * @dev2: Second DT device node of the Dual-Link LVDS source
+ * @port2_id: ID of the second DT port node of the Dual-Link LVDS source
+ * @endpoint2_id: ID of the second DT port node of the Dual-Link LVDS source
  *
  * An LVDS dual-link connection is made of two links, with even pixels
  * transitting on one link, and odd pixels on the other link. This function
@@ -360,43 +394,85 @@ static int drm_of_lvds_get_remote_pixels_type(
  *
  * If either port is not connected, this function returns -EPIPE.
  *
- * @port1 and @port2 are typically DT sibling nodes, but may have different
- * parents when, for instance, two separate LVDS encoders carry the even and odd
- * pixels.
+ * @port1_id and @port2_id are typically DT sibling nodes, but may have
+ * different parents when, for instance, two separate LVDS encoders carry the
+ * even and odd pixels.
+ *
+ * If @port1_id, @port2_id, @endpoint1_id or @endpoint2_id are set to -1, their
+ * value is going to be ignored and the first port or endpoint will be used.
  *
  * Return:
- * * DRM_LVDS_DUAL_LINK_EVEN_ODD_PIXELS - @port1 carries even pixels and @port2
- *   carries odd pixels
- * * DRM_LVDS_DUAL_LINK_ODD_EVEN_PIXELS - @port1 carries odd pixels and @port2
- *   carries even pixels
- * * -EINVAL - @port1 and @port2 are not connected to a dual-link LVDS sink, or
- *   the sink configuration is invalid
- * * -EPIPE - when @port1 or @port2 are not connected
+ * * DRM_LVDS_DUAL_LINK_EVEN_ODD_PIXELS - @endpoint1_id carries even pixels and
+ *   @endpoint2_id carries odd pixels
+ * * DRM_LVDS_DUAL_LINK_ODD_EVEN_PIXELS - @endpoint1_id carries odd pixels and
+ *   @endpoint2_id carries even pixels
+ * * -EINVAL - @endpoint1_id and @endpoint2_id are not connected to a dual-link
+ *   LVDS sink, or the sink configuration is invalid
+ * * -EPIPE - when @endpoint1_id or @endpoint2_id are not connected
  */
-int drm_of_lvds_get_dual_link_pixel_order(const struct device_node *port1,
-					  const struct device_node *port2)
+int drm_of_lvds_get_dual_link_pixel_order(const struct device_node *dev1,
+					  int port1_id,
+					  int endpoint1_id,
+					  const struct device_node *dev2,
+					  int port2_id,
+					  int endpoint2_id)
 {
+	struct device_node *endpoint1, *endpoint2;
 	int remote_p1_pt, remote_p2_pt;
+	int ret;
 
-	if (!port1 || !port2)
+	if (!dev1 || !dev2)
 		return -EINVAL;
 
-	remote_p1_pt = drm_of_lvds_get_remote_pixels_type(port1);
-	if (remote_p1_pt < 0)
-		return remote_p1_pt;
+	if (endpoint1_id == -1) {
+		ret = drm_of_lvds_check_remote_port(dev1, port1_id);
+		if (ret)
+			return ret;
+	}
 
-	remote_p2_pt = drm_of_lvds_get_remote_pixels_type(port2);
-	if (remote_p2_pt < 0)
+	if (endpoint2_id == -1) {
+		ret = drm_of_lvds_check_remote_port(dev2, port2_id);
+		if (ret)
+			return ret;
+	}
+
+	endpoint1 = of_graph_get_endpoint_by_regs(dev1, port1_id, endpoint1_id);
+	if (!endpoint1)
+		return -EINVAL;
+
+	endpoint2 = of_graph_get_endpoint_by_regs(dev2, port2_id, endpoint2_id);
+	if (!endpoint2) {
+		of_node_put(endpoint1);
+		return -EINVAL;
+	}
+
+	remote_p1_pt = drm_of_lvds_get_remote_pixels_type(endpoint1);
+	if (remote_p1_pt < 0) {
+		of_node_put(endpoint2);
+		of_node_put(endpoint1);
+		return remote_p1_pt;
+	}
+
+	remote_p2_pt = drm_of_lvds_get_remote_pixels_type(endpoint2);
+	if (remote_p2_pt < 0) {
+		of_node_put(endpoint2);
+		of_node_put(endpoint1);
 		return remote_p2_pt;
+	}
 
 	/*
 	 * A valid dual-lVDS bus is found when one remote port is marked with
 	 * "dual-lvds-even-pixels", and the other remote port is marked with
 	 * "dual-lvds-odd-pixels", bail out if the markers are not right.
 	 */
-	if (remote_p1_pt + remote_p2_pt != DRM_OF_LVDS_EVEN + DRM_OF_LVDS_ODD)
+	if (remote_p1_pt + remote_p2_pt != DRM_OF_LVDS_EVEN + DRM_OF_LVDS_ODD) {
+		of_node_put(endpoint2);
+		of_node_put(endpoint1);
 		return -EINVAL;
+	}
 
+	of_node_put(endpoint2);
+	of_node_put(endpoint1);
 	return remote_p1_pt == DRM_OF_LVDS_EVEN ?
 		DRM_LVDS_DUAL_LINK_EVEN_ODD_PIXELS :
 		DRM_LVDS_DUAL_LINK_ODD_EVEN_PIXELS;

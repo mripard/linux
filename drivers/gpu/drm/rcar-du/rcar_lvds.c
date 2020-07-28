@@ -617,7 +617,6 @@ static int rcar_lvds_parse_dt_companion(struct rcar_lvds *lvds)
 {
 	const struct of_device_id *match;
 	struct device_node *companion;
-	struct device_node *port0, *port1;
 	struct rcar_lvds *companion_lvds;
 	struct device *dev = lvds->dev;
 	int dual_link;
@@ -645,11 +644,8 @@ static int rcar_lvds_parse_dt_companion(struct rcar_lvds *lvds)
 	 * connected to, if they are marked as expecting even pixels and
 	 * odd pixels than we need to enable vertical stripe output.
 	 */
-	port0 = of_graph_get_port_by_id(dev->of_node, 1);
-	port1 = of_graph_get_port_by_id(companion, 1);
-	dual_link = drm_of_lvds_get_dual_link_pixel_order(port0, port1);
-	of_node_put(port0);
-	of_node_put(port1);
+	dual_link = drm_of_lvds_get_dual_link_pixel_order(dev->of_node, 1, -1,
+							  companion, 1, -1);
 
 	switch (dual_link) {
 	case DRM_LVDS_DUAL_LINK_ODD_EVEN_PIXELS:

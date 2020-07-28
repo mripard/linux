@@ -568,15 +568,10 @@ static int sn65dsi83_parse_dt(struct sn65dsi83 *ctx, enum sn65dsi83_model model)
 	ctx->lvds_dual_link = false;
 	ctx->lvds_dual_link_even_odd_swap = false;
 	if (model != MODEL_SN65DSI83) {
-		struct device_node *port2, *port3;
 		int dual_link;
 
-		port2 = of_graph_get_port_by_id(dev->of_node, 2);
-		port3 = of_graph_get_port_by_id(dev->of_node, 3);
-		dual_link = drm_of_lvds_get_dual_link_pixel_order(port2, port3);
-		of_node_put(port2);
-		of_node_put(port3);
-
+		dual_link = drm_of_lvds_get_dual_link_pixel_order(dev->of_node, 2, -1,
+								  dev->of_node, 3, -1);
 		if (dual_link == DRM_LVDS_DUAL_LINK_ODD_EVEN_PIXELS) {
 			ctx->lvds_dual_link = true;
 			/* Odd pixels to LVDS Channel A, even pixels to B */
