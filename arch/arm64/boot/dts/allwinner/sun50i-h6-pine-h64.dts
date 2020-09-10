@@ -14,12 +14,34 @@
 
 	aliases {
 		ethernet0 = &emac;
-		serial0 = &uart0;
 		spi0 = &spi0;
 	};
 
 	chosen {
 		stdout-path = "serial0:115200n8";
+	};
+
+	lineout: audio-codec {
+		#sound-dai-cells = <0>;
+		compatible = "ti,pcm5102a";
+	};
+
+	sound-test-card {
+		compatible = "simple-audio-card";
+//		simple-audio-card,format = "i2s";
+		simple-audio-card,format = "dsp_a";
+		simple-audio-card,name = "allwinner-i2s-test";
+		simple-audio-card,mclk-fs = <256>;
+
+		simple-audio-card,cpu {
+			sound-dai = <&i2s0>;
+			bitclock-master;
+			frame-master;
+		};
+
+		simple-audio-card,codec {
+			sound-dai = <&lineout>;
+		};
 	};
 
 	ext_osc32k: ext_osc32k_clk {
@@ -32,7 +54,6 @@
 	hdmi_connector: connector {
 		compatible = "hdmi-connector";
 		type = "a";
-		ddc-en-gpios = <&pio 7 2 GPIO_ACTIVE_HIGH>; /* PH2 */
 
 		port {
 			hdmi_con_in: endpoint {
@@ -313,12 +334,6 @@
 		reg = <0>;
 		spi-max-frequency = <4000000>;
 	};
-};
-
-&uart0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&uart0_ph_pins>;
-	status = "okay";
 };
 
 &usb2otg {

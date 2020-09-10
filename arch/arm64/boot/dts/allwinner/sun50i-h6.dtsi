@@ -350,6 +350,12 @@
 				function = "i2c2";
 			};
 
+			i2s0_pins: i2s0-pins {
+				pins = "PH0", "PH1", "PH2", "PH3";
+				function = "i2s0";
+				bias-disable;
+			};
+
 			mmc0_pins: mmc0-pins {
 				pins = "PF0", "PF1", "PF2", "PF3",
 				       "PF4", "PF5";
@@ -624,6 +630,20 @@
 				#address-cells = <1>;
 				#size-cells = <0>;
 			};
+		};
+
+		i2s0: i2s@5090000 {
+			#sound-dai-cells = <0>;
+			compatible = "allwinner,sun50i-h6-i2s";
+			reg = <0x05090000 0x1000>;
+			interrupts = <GIC_SPI 18 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&ccu CLK_BUS_I2S0>, <&ccu CLK_I2S0>;
+			clock-names = "apb", "mod";
+			dmas = <&dma 3>, <&dma 3>;
+			resets = <&ccu RST_BUS_I2S0>;
+			dma-names = "rx", "tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2s0_pins>;
 		};
 
 		i2s1: i2s@5091000 {
