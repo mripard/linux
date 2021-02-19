@@ -603,7 +603,7 @@ EXPORT_SYMBOL(of_graph_parse_endpoint);
  * Return: A 'port' node pointer with refcount incremented. The caller
  * has to use of_node_put() on it when done.
  */
-struct device_node *of_graph_get_port_by_id(struct device_node *parent, u32 id)
+struct device_node *of_graph_get_port_by_id(const struct device_node *parent, u32 id)
 {
 	struct device_node *node, *port;
 
