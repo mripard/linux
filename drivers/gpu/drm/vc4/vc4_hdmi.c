@@ -94,6 +94,7 @@
 # define VC4_HD_M_SW_RST			BIT(2)
 # define VC4_HD_M_ENABLE			BIT(0)
 
+#define HSM_MIN_CLOCK_FREQ	120000000
 #define CEC_CLOCK_FREQ 40000
 
 #define HDMI_14_MAX_TMDS_CLK   (340 * 1000 * 1000)
@@ -931,7 +932,7 @@ static void vc4_hdmi_encoder_pre_crtc_configure(struct drm_encoder *encoder,
 	 * Additionally, the AXI clock needs to be at least 25% of
 	 * pixel clock, but HSM ends up being the limiting factor.
 	 */
-	hsm_rate = max_t(unsigned long, 120000000, (pixel_rate / 100) * 101);
+	hsm_rate = max_t(unsigned long, HSM_MIN_CLOCK_FREQ, (pixel_rate / 100) * 101);
 	ret = clk_set_min_rate(vc4_hdmi->hsm_clock, hsm_rate);
 	if (ret) {
 		DRM_ERROR("Failed to set HSM clock rate: %d\n", ret);
@@ -2168,6 +2169,32 @@ static int vc4_hdmi_bind(struct device *dev, struct device *master, void *data)
 		if (max_rate < 550000000)
 			vc4_hdmi->disable_4kp60 = true;
 	}
+
+	/*
+	 * If we boot without any cable connected to the HDMI connector,
+	 * the firmware will skip the HSM initialization and leave it
+	 * with a rate of 0, resulting in a bus lockup when we're
+	 * accessing the registers even if it's enabled.
+	 *
+	 * Let's put a sensible default at runtime_resume so that we
+	 * don't end up in this situation.
+	 *
+	 * Strictly speaking we should be using clk_set_min_rate.
+	 * However, the clk-bcm2835 clock driver favors clock rates
+	 * under the expected rate, which in the case where we set the
+	 * minimum clock rate will be rejected by the clock framework.
+	 *
+	 * However, even for the two HDMI controllers found on the
+	 * BCM2711, using clk_set_rate doesn't cause any issue. Indeed,
+	 * the bind callbacks are called in sequence, and before the DRM
+	 * device is registered and therefore a mode is set. As such,
+	 * we're not at risk of having the first controller set a
+	 * different mode and then the second overriding the HSM clock
+	 * frequency in its bind.
+	 */
+	ret = clk_set_rate(vc4_hdmi->hsm_clock, HSM_MIN_CLOCK_FREQ);
+	if (ret)
+		goto err_put_ddc;
 
 	if (vc4_hdmi->variant->reset)
 		vc4_hdmi->variant->reset(vc4_hdmi);
