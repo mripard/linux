@@ -105,6 +105,7 @@
 	vmmc-supply = <&reg_vcc3v3>;
 	bus-width = <4>;
 	cd-gpios = <&pio 8 5 GPIO_ACTIVE_LOW>; /* PI5 */
+	mmc-ddr-3_3v;
 	status = "okay";
 };
 

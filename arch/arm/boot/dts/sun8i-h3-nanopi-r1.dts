@@ -99,6 +99,7 @@
 	mmc-pwrseq = <&wifi_pwrseq>;
 	bus-width = <4>;
 	non-removable;
+	mmc-ddr-3_3v;
 	status = "okay";
 
 	wifi: wifi@1 {
@@ -117,6 +118,7 @@
 	vqmmc-supply = <&reg_vcc3v3>;
 	bus-width = <8>;
 	non-removable;
+	mmc-ddr-3_3v;
 	status = "okay";
 };
 

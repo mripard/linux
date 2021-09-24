@@ -24,6 +24,7 @@
 	mmc-pwrseq = <&mmc2_pwrseq>;
 	bus-width = <4>;
 	non-removable;
+	mmc-ddr-3_3v;
 	status = "okay";
 
 	emmc: emmc@0 {

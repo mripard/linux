@@ -101,5 +101,6 @@
 	broken-cd;
 	bus-width = <4>;
 	vmmc-supply = <&reg_vcc3v3>;
+	mmc-ddr-3_3v;
 	status = "okay";
 };

@@ -164,6 +164,7 @@
 	vmmc-supply = <&reg_vcc3v3>;
 	bus-width = <4>;
 	cd-gpios = <&pio 7 10 GPIO_ACTIVE_LOW>; /* PH10 */
+	mmc-ddr-3_3v;
 	status = "okay";
 };
 
@@ -171,6 +172,7 @@
 	vmmc-supply = <&reg_vcc3v3>;
 	bus-width = <4>;
 	cd-gpios = <&pio 7 11 GPIO_ACTIVE_LOW>; /* PH11 */
+	mmc-ddr-3_3v;
 	status = "okay";
 };
 

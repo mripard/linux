@@ -106,6 +106,7 @@
 	vmmc-supply = <&reg_dcdc1>;
 	bus-width = <4>;
 	cd-gpios = <&pio 7 22 GPIO_ACTIVE_LOW>; /* PH22 */
+	mmc-ddr-3_3v;
 	status = "okay";
 };
 

@@ -205,6 +205,7 @@
 	vmmc-supply = <&reg_dcdc1>;
 	bus-width = <4>;
 	cd-gpios = <&pio 0 8 GPIO_ACTIVE_LOW>; /* PA8 */
+	mmc-ddr-3_3v;
 	status = "okay";
 };
 
@@ -213,6 +214,7 @@
 	mmc-pwrseq = <&wifi_pwrseq>;
 	bus-width = <4>;
 	non-removable;
+	mmc-ddr-3_3v;
 	status = "okay";
 };
 

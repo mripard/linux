@@ -83,6 +83,7 @@
 	vmmc-supply = <&reg_dldo1>;
 	bus-width = <4>;
 	non-removable;
+	mmc-ddr-3_3v;
 	status = "okay";
 
 	rtl8703as: sdio_wifi@1 {

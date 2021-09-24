@@ -187,6 +187,7 @@
 	vmmc-supply = <&reg_vcc_io>;
 	bus-width = <4>;
 	cd-gpios = <&pio 5 6 GPIO_ACTIVE_LOW>; /* PF6 */
+	mmc-ddr-3_3v;
 	status = "okay";
 };
 
@@ -196,6 +197,7 @@
 	vmmc-supply = <&reg_vcc_io>;
 	bus-width = <8>;
 	non-removable;
+	mmc-ddr-3_3v;
 	status = "okay";
 };
 

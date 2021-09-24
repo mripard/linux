@@ -154,6 +154,7 @@
 	vmmc-supply = <&reg_vcc3v3>;
 	bus-width = <4>;
 	cd-gpios = <&pio 5 6 GPIO_ACTIVE_LOW>; /* PF6 */
+	mmc-ddr-3_3v;
 	status = "okay";
 };
 
@@ -162,6 +163,7 @@
 	mmc-pwrseq = <&wifi_pwrseq>;
 	bus-width = <4>;
 	non-removable;
+	mmc-ddr-3_3v;
 	status = "okay";
 
 	/*

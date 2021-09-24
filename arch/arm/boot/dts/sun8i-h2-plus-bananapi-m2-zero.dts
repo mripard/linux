@@ -140,6 +140,7 @@
 	 * high active (card inserted), although on the early samples it's
 	 * low active.
 	 */
+	mmc-ddr-3_3v;
 	cd-gpios = <&pio 5 6 GPIO_ACTIVE_HIGH>; /* PF6 */
 	status = "okay";
 };
@@ -150,6 +151,7 @@
 	mmc-pwrseq = <&wifi_pwrseq>;
 	bus-width = <4>;
 	non-removable;
+	mmc-ddr-3_3v;
 	status = "okay";
 
 	brcmf: wifi@1 {

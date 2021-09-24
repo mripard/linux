@@ -9,3 +9,15 @@
 
 #include "sun8i-h3.dtsi"
 #include <arm/sunxi-h3-h5-emlid-neutis.dtsi>
+
+&mmc0 {
+	mmc-ddr-3_3v;
+};
+
+&mmc1 {
+	mmc-ddr-3_3v;
+};
+
+&mmc2 {
+	mmc-ddr-3_3v;
+};
