@@ -9,3 +9,7 @@
 
 #include "sun50i-h5.dtsi"
 #include <arm/sunxi-h3-h5-emlid-neutis.dtsi>
+
+mmc2 {
+	/delete-property/ mmc-ddr-3_3v;
+};

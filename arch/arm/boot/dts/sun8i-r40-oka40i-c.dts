@@ -123,6 +123,7 @@
 	vqmmc-supply = <&reg_dcdc1>;
 	bus-width = <4>;
 	cd-gpios = <&pio 8 11 GPIO_ACTIVE_LOW>; // PI11
+	mmc-ddr-3_3v;
 	status = "okay";
 };
 
@@ -131,6 +132,7 @@
 	vqmmc-supply = <&reg_dcdc1>;
 	bus-width = <4>;
 	cd-gpios = <&pio 8 10 GPIO_ACTIVE_LOW>; // PI10
+	mmc-ddr-3_3v;
 	status = "okay";
 };
 

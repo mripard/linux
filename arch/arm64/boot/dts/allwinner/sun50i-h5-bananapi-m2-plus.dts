@@ -9,3 +9,7 @@
 	model = "Banana Pi BPI-M2-Plus H5";
 	compatible = "sinovoip,bpi-m2-plus", "allwinner,sun50i-h5";
 };
+
+mmc2 {
+	/delete-property/ mmc-ddr-3_3v;
+};

@@ -233,6 +233,7 @@
 	cd-gpios = <&pio 5 6 GPIO_ACTIVE_LOW>;
 	disable-wp;
 	bus-width = <4>;
+	mmc-ddr-3_3v;
 	status = "okay";
 };
 
@@ -244,6 +245,7 @@
 	mmc-pwrseq = <&wifi_pwrseq>;
 	bus-width = <4>;
 	non-removable;
+	mmc-ddr-1_8v;
 	status = "okay";
 
 	rtl8723cs: wifi@1 {
@@ -259,6 +261,7 @@
 	bus-width = <8>;
 	non-removable;
 	cap-mmc-hw-reset;
+	mmc-ddr-3_3v;
 	status = "okay";
 };
 

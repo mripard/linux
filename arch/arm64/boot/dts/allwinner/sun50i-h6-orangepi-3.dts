@@ -132,6 +132,7 @@
 	vmmc-supply = <&reg_cldo1>;
 	cd-gpios = <&pio 5 6 GPIO_ACTIVE_LOW>; /* PF6 */
 	bus-width = <4>;
+	mmc-ddr-3_3v;
 	status = "okay";
 };
 
@@ -141,6 +142,7 @@
 	mmc-pwrseq = <&wifi_pwrseq>;
 	bus-width = <4>;
 	non-removable;
+	mmc-ddr-1_8v;
 	status = "okay";
 
 	brcm: sdio-wifi@1 {
@@ -158,6 +160,7 @@
 	cap-mmc-hw-reset;
 	non-removable;
 	bus-width = <8>;
+	mmc-ddr-1_8v;
 	status = "okay";
 };
 
