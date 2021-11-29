@@ -45,6 +45,7 @@
 #include "sun8i-r40.dtsi"
 
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pwm/pwm.h>
 
 / {
 	model = "Banana Pi BPI-M2-Ultra";
@@ -57,6 +58,44 @@
 
 	chosen {
 		stdout-path = "serial0:115200n8";
+	};
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm 0 50000 PWM_POLARITY_INVERTED>;
+		brightness-levels = <1 2 4 8 16 32 64 128 255>;
+		default-brightness-level = <2>;
+		enable-gpios = <&pio 1 3 GPIO_ACTIVE_LOW>; /* LCD-BL-EN: PB3 */
+	};
+
+	panel {
+		compatible = "tbs,a711-panel", "panel-lvds";
+		backlight = <&backlight>;
+		// power-supply = <&reg_sw>;
+		// reset-gpios = <&pio 1 4 GPIO_ACTIVE_LOW>; /* LCD-RST: PB4 */
+
+		width-mm = <153>;
+		height-mm = <90>;
+		data-mapping = "vesa-24";
+
+		panel-timing {
+			/* 1024x600 @60Hz */
+			clock-frequency = <52000000>;
+			hactive = <1024>;
+			vactive = <600>;
+			hsync-len = <20>;
+			hfront-porch = <180>;
+			hback-porch = <160>;
+			vfront-porch = <12>;
+			vback-porch = <23>;
+			vsync-len = <5>;
+		};
+
+		port {
+			panel_input: endpoint {
+				remote-endpoint = <&tcon_lcd0_out_panel>;
+			};
+		};
 	};
 
 	connector {
@@ -213,6 +252,10 @@
 	vcc-pg-supply = <&reg_dldo1>;
 };
 
+&pwm {
+	status = "okay";
+};
+
 &reg_aldo2 {
 	regulator-min-microvolt = <2500000>;
 	regulator-max-microvolt = <2500000>;
@@ -297,6 +340,19 @@
 	regulator-min-microvolt = <1200000>;
 	regulator-max-microvolt = <1200000>;
 	regulator-name = "vdd1v2-sata";
+};
+
+&tcon_lcd0 {
+	pinctrl-names = "default";
+	/* pinctrl-0 = <&lcd_lvds_pins>; */
+	status = "okay";
+};
+
+&tcon_lcd0_out {
+	tcon_lcd0_out_panel: endpoint@0 {
+		reg = <0>;
+		remote-endpoint = <&panel_input>;
+	};
 };
 
 &tcon_tv0 {
