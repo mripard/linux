@@ -2158,6 +2158,8 @@ static struct clk_core *clk_calc_new_rates(struct clk_core *core,
 	if (IS_ERR_OR_NULL(core))
 		return NULL;
 
+	pr_crit("%s +%d %s\n", __func__, __LINE__, core ? core->name : "(null)");
+
 	/* save parent rate, if it exists */
 	parent = old_parent = core->parent;
 	if (parent)
@@ -2190,6 +2192,7 @@ static struct clk_core *clk_calc_new_rates(struct clk_core *core,
 		core->new_rate = core->rate;
 		return NULL;
 	} else {
+		pr_crit("%s +%d\n", __func__, __LINE__);
 		/* pass-through clock with adjustable parent */
 		top = clk_calc_new_rates(parent, rate);
 		new_rate = parent->new_rate;
@@ -2215,11 +2218,17 @@ static struct clk_core *clk_calc_new_rates(struct clk_core *core,
 	}
 
 	if ((core->flags & CLK_SET_RATE_PARENT) && parent &&
-	    best_parent_rate != parent->rate)
+	    best_parent_rate != parent->rate) {
+		pr_crit("%s +%d\n", __func__, __LINE__);
 		top = clk_calc_new_rates(parent, best_parent_rate);
+	}
 
 out:
+	pr_crit("%s +%d\n", __func__, __LINE__);
 	clk_calc_subtree(core, new_rate, parent, p_index);
+
+	pr_crit("%s +%d top most clock %s\n",
+		__func__, __LINE__, top ? top->name : "(null)");
 
 	return top;
 }
@@ -2277,6 +2286,8 @@ static void clk_change_rate(struct clk_core *core)
 	struct clk_core *old_parent;
 	struct clk_core *parent = NULL;
 
+	pr_crit("%s +%d %s\n", __func__, __LINE__, core ? core->name : "(null)");
+
 	old_rate = core->rate;
 
 	if (core->new_parent) {
@@ -2296,6 +2307,9 @@ static void clk_change_rate(struct clk_core *core)
 	}
 
 	if (core->new_parent && core->new_parent != core->parent) {
+		pr_crit("%s +%d Changing parent to %s\n",
+			__func__, __LINE__, core->new_parent->name);
+
 		old_parent = __clk_set_parent_before(core, core->new_parent);
 		trace_clk_set_parent(core, core->new_parent);
 
@@ -2317,8 +2331,10 @@ static void clk_change_rate(struct clk_core *core)
 
 	trace_clk_set_rate(core, core->new_rate);
 
-	if (!skip_set_rate && core->ops->set_rate)
+	if (!skip_set_rate && core->ops->set_rate) {
+		pr_crit("%s +%d Changing rate to %lu\n", __func__, __LINE__, core->new_rate);
 		core->ops->set_rate(core->hw, core->new_rate, best_parent_rate);
+	}
 
 	trace_clk_set_rate_complete(core, core->new_rate);
 
