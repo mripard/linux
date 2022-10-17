@@ -583,6 +583,16 @@ clk_core_forward_rate_req(struct clk_core *core,
 		req->max_rate = old_req->max_rate;
 }
 
+static void clk_core_request_dump(const struct clk_rate_request *req)
+{
+	pr_crit("%s\n", req->core ? req->core->name : "(null)");
+	pr_crit("\trate %lu\n", req->rate);
+	pr_crit("\tmin %lu, max %lu\n", req->min_rate, req->max_rate);
+	pr_crit("\tbest parent %s, rate %lu\n",
+		clk_hw_get_name(req->best_parent_hw),
+		req->best_parent_rate);
+}
+
 int clk_mux_determine_rate_flags(struct clk_hw *hw,
 				 struct clk_rate_request *req,
 				 unsigned long flags)
@@ -1545,16 +1555,6 @@ void clk_hw_forward_rate_request(const struct clk_hw *hw,
 static bool clk_core_can_round(struct clk_core * const core)
 {
 	return core->ops->determine_rate || core->ops->round_rate;
-}
-
-static void clk_core_request_dump(const struct clk_rate_request *req)
-{
-	pr_crit("%s\n", req->core ? req->core->name : "(null)");
-	pr_crit("\trate %lu\n", req->rate);
-	pr_crit("\tmin %lu, max %lu\n", req->min_rate, req->max_rate);
-	pr_crit("\tbest parent %s, rate %lu\n",
-		clk_hw_get_name(req->best_parent_hw),
-		req->best_parent_rate);
 }
 
 static int clk_core_round_rate_nolock(struct clk_core *core,
