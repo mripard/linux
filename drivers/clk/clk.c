@@ -601,8 +601,6 @@ int clk_mux_determine_rate_flags(struct clk_hw *hw,
 	int i, num_parents, ret;
 	unsigned long best = 0;
 
-	pr_crit("%s +%d Clock %s\n", __func__, __LINE__, clk_hw_get_name(hw));
-
 	/* if NO_REPARENT flag set, pass through to current parent */
 	if (core->flags & CLK_SET_RATE_NO_REPARENT) {
 		parent = core->parent;
@@ -643,12 +641,8 @@ int clk_mux_determine_rate_flags(struct clk_hw *hw,
 		if (!parent)
 			continue;
 
-		pr_crit("%s +%d parent %s\n", __func__, __LINE__, parent ? parent->name : "(null)");
-
 		if (core->flags & CLK_SET_RATE_PARENT) {
 			struct clk_rate_request parent_req;
-
-			pr_crit("%s +%d\n", __func__, __LINE__);
 
 			clk_core_forward_rate_req(core, req, parent, &parent_req, req->rate);
 
@@ -680,9 +674,6 @@ out:
 		req->best_parent_hw = best_parent->hw;
 	req->best_parent_rate = best;
 	req->rate = best;
-
-	pr_crit("%s +%d\n", __func__, __LINE__);
-	clk_core_request_dump(req);
 
 	return 0;
 }
@@ -1588,9 +1579,6 @@ static int clk_core_round_rate_nolock(struct clk_core *core,
 		req->best_parent_rate = parent_req.rate;
 		req->rate = parent_req.rate;
 
-		pr_crit("%s +%d\n", __func__, __LINE__);
-		clk_core_request_dump(req);
-
 		return 0;
 	}
 
@@ -2158,8 +2146,6 @@ static struct clk_core *clk_calc_new_rates(struct clk_core *core,
 	if (IS_ERR_OR_NULL(core))
 		return NULL;
 
-	pr_crit("%s +%d %s\n", __func__, __LINE__, core ? core->name : "(null)");
-
 	/* save parent rate, if it exists */
 	parent = old_parent = core->parent;
 	if (parent)
@@ -2192,7 +2178,6 @@ static struct clk_core *clk_calc_new_rates(struct clk_core *core,
 		core->new_rate = core->rate;
 		return NULL;
 	} else {
-		pr_crit("%s +%d\n", __func__, __LINE__);
 		/* pass-through clock with adjustable parent */
 		top = clk_calc_new_rates(parent, rate);
 		new_rate = parent->new_rate;
@@ -2219,16 +2204,11 @@ static struct clk_core *clk_calc_new_rates(struct clk_core *core,
 
 	if ((core->flags & CLK_SET_RATE_PARENT) && parent &&
 	    best_parent_rate != parent->rate) {
-		pr_crit("%s +%d\n", __func__, __LINE__);
 		top = clk_calc_new_rates(parent, best_parent_rate);
 	}
 
 out:
-	pr_crit("%s +%d\n", __func__, __LINE__);
 	clk_calc_subtree(core, new_rate, parent, p_index);
-
-	pr_crit("%s +%d top most clock %s\n",
-		__func__, __LINE__, top ? top->name : "(null)");
 
 	return top;
 }
@@ -2286,7 +2266,7 @@ static void clk_change_rate(struct clk_core *core)
 	struct clk_core *old_parent;
 	struct clk_core *parent = NULL;
 
-	pr_crit("%s +%d %s\n", __func__, __LINE__, core ? core->name : "(null)");
+	pr_crit("%s +%d Running on %s\n", __func__, __LINE__, core->name);
 
 	old_rate = core->rate;
 
