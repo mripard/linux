@@ -1588,6 +1588,9 @@ static int clk_core_round_rate_nolock(struct clk_core *core,
 		req->best_parent_rate = parent_req.rate;
 		req->rate = parent_req.rate;
 
+		pr_crit("%s +%d\n", __func__, __LINE__);
+		clk_core_request_dump(req);
+
 		return 0;
 	}
 
