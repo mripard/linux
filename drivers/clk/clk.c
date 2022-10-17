@@ -634,6 +634,8 @@ int clk_mux_determine_rate_flags(struct clk_hw *hw,
 		if (core->flags & CLK_SET_RATE_PARENT) {
 			struct clk_rate_request parent_req;
 
+			pr_crit("%s +%d\n", __func__, __LINE__);
+
 			clk_core_forward_rate_req(core, req, parent, &parent_req, req->rate);
 
 			trace_clk_rate_request_start(&parent_req);
@@ -664,6 +666,9 @@ out:
 		req->best_parent_hw = best_parent->hw;
 	req->best_parent_rate = best;
 	req->rate = best;
+
+	pr_crit("%s +%d\n", __func__, __LINE__);
+	clk_core_request_dump(core, req);
 
 	return 0;
 }
