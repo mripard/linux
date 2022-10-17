@@ -591,6 +591,8 @@ int clk_mux_determine_rate_flags(struct clk_hw *hw,
 	int i, num_parents, ret;
 	unsigned long best = 0;
 
+	pr_crit("%s +%d Clock %s\n", __func__, __LINE__, clk_hw_get_name(hw));
+
 	/* if NO_REPARENT flag set, pass through to current parent */
 	if (core->flags & CLK_SET_RATE_NO_REPARENT) {
 		parent = core->parent;
@@ -630,6 +632,8 @@ int clk_mux_determine_rate_flags(struct clk_hw *hw,
 		parent = clk_core_get_parent_by_index(core, i);
 		if (!parent)
 			continue;
+
+		pr_crit("%s +%d parent %s\n", __func__, __LINE__, parent ? parent->name : "(null)");
 
 		if (core->flags & CLK_SET_RATE_PARENT) {
 			struct clk_rate_request parent_req;
