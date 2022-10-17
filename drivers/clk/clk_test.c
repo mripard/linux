@@ -17,6 +17,7 @@
 struct clk_dummy_context {
 	struct clk_hw hw;
 	unsigned long rate;
+	bool enabled;
 };
 
 static unsigned long clk_dummy_recalc_rate(struct clk_hw *hw,
@@ -31,7 +32,11 @@ static unsigned long clk_dummy_recalc_rate(struct clk_hw *hw,
 static int clk_dummy_determine_rate(struct clk_hw *hw,
 				    struct clk_rate_request *req)
 {
-	/* Just return the same rate without modifying it */
+	struct clk_dummy_context *ctx =
+		container_of(hw, struct clk_dummy_context, hw);
+
+	req->rate = ctx->rate;
+
 	return 0;
 }
 
@@ -84,6 +89,10 @@ static u8 clk_dummy_single_get_parent(struct clk_hw *hw)
 {
 	return 0;
 }
+
+static const struct clk_ops clk_dummy_fixed_rate_ops = {
+	.recalc_rate = clk_dummy_recalc_rate,
+};
 
 static const struct clk_ops clk_dummy_rate_ops = {
 	.recalc_rate = clk_dummy_recalc_rate,
@@ -2394,7 +2403,173 @@ static struct kunit_suite clk_mux_notifier_test_suite = {
 	.test_cases = clk_mux_notifier_test_cases,
 };
 
+static int clk_dummy_enable(struct clk_hw *hw)
+{
+	struct clk_dummy_context *ctx =
+		container_of(hw, struct clk_dummy_context, hw);
+
+	ctx->enabled = true;
+
+	return 0;
+}
+
+static void clk_dummy_disable(struct clk_hw *hw)
+{
+	struct clk_dummy_context *ctx =
+		container_of(hw, struct clk_dummy_context, hw);
+
+	ctx->enabled = false;
+}
+
+static int clk_dummy_is_enabled(struct clk_hw *hw)
+{
+	struct clk_dummy_context *ctx =
+		container_of(hw, struct clk_dummy_context, hw);
+
+	return ctx->enabled;
+}
+
+static const struct clk_ops clk_dummy_gate_ops = {
+	.enable = clk_dummy_enable,
+	.disable = clk_dummy_disable,
+	.is_enabled = clk_dummy_is_enabled,
+};
+
+static const struct clk_ops clk_multiple_parents_broken_mux_ops = {
+	.get_parent = clk_multiple_parents_mux_get_parent,
+	.set_parent = clk_multiple_parents_mux_set_parent,
+};
+
+struct clk_quick_test_ctx {
+	struct clk_dummy_context top_osc;
+	struct clk_dummy_context top_gen;
+	struct clk_dummy_context lvl1_gen;
+
+	struct clk_multiple_parent_ctx lvl1_mux;
+	struct clk_multiple_parent_ctx lvl2_mux;
+	struct clk_dummy_context leaf;
+
+	struct notifier_block clk_nb;
+
+	struct clk *clk;
+};
+
+#define TOPLVL_OSC_NAME	"clk26m"
+#define TOPLVL_OSC_FREQ	(26 * 1000 * 1000)
+
+#define TOPLVL_GEN_NAME	"mainpll_d5_d2"
+#define TOPLVL_GEN_FREQ	(500 * 1000 * 1000)
+
+#define LVL1_MUX_NAME	"top_mfg_core_tmp"
+
+#define LVL1_GEN_NAME	"mfgpll"
+
+#define LVL2_MUX_NAME	"mfg_ck_fast_ref"
+
+#define LEAF_NAME	"mfg_bg3d"
+
+static int clk_quick_test_callback(struct notifier_block *nb,
+				   unsigned long action, void *data)
+{
+	struct clk_notifier_data *clk_data = data;
+	struct clk_quick_test_ctx *ctx = container_of(nb,
+						      struct clk_quick_test_ctx,
+						      clk_nb);
+
+	pr_crit("%s +%d\n", __func__, __LINE__);
+
+	if (action & PRE_RATE_CHANGE)
+		pr_crit("%s +%d\n", __func__, __LINE__);
+
+	if (action & POST_RATE_CHANGE)
+		pr_crit("%s +%d\n", __func__, __LINE__);
+
+	return 0;
+}
+
+static void clk_quick_test(struct kunit *test)
+{
+	const char *lvl1_mux_parents[2] = { TOPLVL_OSC_NAME, TOPLVL_GEN_NAME };
+	const char *lvl2_mux_parents[2] = { LVL1_MUX_NAME, LVL1_GEN_NAME };
+	struct clk_quick_test_ctx *ctx;
+	struct clk *clk;
+	int ret;
+
+	ctx = kunit_kzalloc(test, sizeof(*ctx), GFP_KERNEL);
+	KUNIT_ASSERT_NOT_NULL(test, ctx);
+
+	ctx->top_osc.rate = TOPLVL_OSC_FREQ;
+	ctx->top_osc.hw.init = CLK_HW_INIT_NO_PARENT(TOPLVL_OSC_NAME,
+						     &clk_dummy_fixed_rate_ops,
+						     0);
+
+	ret = clk_hw_register(NULL, &ctx->top_osc.hw);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+
+	ctx->top_gen.rate = 60 * 1000 * 1000;
+	ctx->top_gen.hw.init = CLK_HW_INIT_NO_PARENT(TOPLVL_GEN_NAME,
+						     &clk_dummy_rate_ops,
+						     0);
+	ret = clk_hw_register(NULL, &ctx->top_gen.hw);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+
+	ctx->lvl1_mux.current_parent = 2;
+	ctx->lvl1_mux.hw.init = CLK_HW_INIT_PARENTS(LVL1_MUX_NAME,
+						    lvl1_mux_parents,
+						    &clk_multiple_parents_broken_mux_ops,
+						    CLK_SET_RATE_PARENT);
+	ret = clk_hw_register(NULL, &ctx->lvl1_mux.hw);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+	KUNIT_ASSERT_NULL(test, clk_hw_get_parent(&ctx->lvl1_mux.hw));
+
+	ctx->lvl1_gen.rate = 100 * 1000 * 1000;
+	ctx->lvl1_gen.hw.init = CLK_HW_INIT_HW(LVL1_GEN_NAME,
+					       &ctx->top_osc.hw,
+					       &clk_dummy_rate_ops,
+					       0);
+	ret = clk_hw_register(NULL, &ctx->lvl1_gen.hw);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+
+	ctx->lvl2_mux.current_parent = 1;
+	ctx->lvl2_mux.hw.init = CLK_HW_INIT_PARENTS(LVL2_MUX_NAME,
+						    lvl2_mux_parents,
+						    &clk_multiple_parents_mux_ops,
+						    CLK_SET_RATE_PARENT);
+	ret = clk_hw_register(NULL, &ctx->lvl2_mux.hw);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+
+	ctx->leaf.hw.init = CLK_HW_INIT_HW(LEAF_NAME,
+					   &ctx->lvl2_mux.hw,
+					   &clk_dummy_gate_ops,
+					   CLK_SET_RATE_PARENT);
+
+	ret = clk_hw_register(NULL, &ctx->leaf.hw);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+
+	clk = clk_hw_get_clk(&ctx->leaf.hw, NULL);
+	KUNIT_ASSERT_NOT_NULL(test, clk);
+
+	ctx->clk_nb.notifier_call = clk_quick_test_callback;
+	ctx->clk = clk_hw_get_clk(&ctx->lvl2_mux.hw, NULL);
+	ret = clk_notifier_register(ctx->clk, &ctx->clk_nb);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+
+	ret = clk_set_rate(clk, DUMMY_CLOCK_RATE_2);
+	KUNIT_EXPECT_EQ(test, ret, 0);
+}
+
+static struct kunit_case clk_quick_test_cases[] = {
+	KUNIT_CASE(clk_quick_test),
+	{}
+};
+
+static struct kunit_suite clk_quick_test_suite = {
+	.name = "clk-quick-test",
+	.test_cases = clk_quick_test_cases,
+};
+
 kunit_test_suites(
+	&clk_quick_test_suite,
 	&clk_leaf_mux_set_rate_parent_test_suite,
 	&clk_test_suite,
 	&clk_multiple_parents_mux_test_suite,
