@@ -32,10 +32,7 @@ static unsigned long clk_dummy_recalc_rate(struct clk_hw *hw,
 static int clk_dummy_determine_rate(struct clk_hw *hw,
 				    struct clk_rate_request *req)
 {
-	struct clk_dummy_context *ctx =
-		container_of(hw, struct clk_dummy_context, hw);
-
-	req->rate = ctx->rate;
+	/* Just return the same rate without modifying it */
 
 	return 0;
 }
@@ -2476,7 +2473,10 @@ static int clk_quick_test_callback(struct notifier_block *nb,
 						      struct clk_quick_test_ctx,
 						      clk_nb);
 
-	pr_crit("%s +%d\n", __func__, __LINE__);
+	pr_crit("%s +%d old %lu new %lu\n",
+		__func__, __LINE__,
+		clk_data->old_rate,
+		clk_data->new_rate);
 
 	if (action & PRE_RATE_CHANGE)
 		pr_crit("%s +%d\n", __func__, __LINE__);
@@ -2486,6 +2486,8 @@ static int clk_quick_test_callback(struct notifier_block *nb,
 
 	return 0;
 }
+
+#include <linux/delay.h>
 
 static void clk_quick_test(struct kunit *test)
 {
@@ -2556,6 +2558,8 @@ static void clk_quick_test(struct kunit *test)
 
 	ret = clk_set_rate(clk, DUMMY_CLOCK_RATE_2);
 	KUNIT_EXPECT_EQ(test, ret, 0);
+
+	msleep(1000);
 }
 
 static struct kunit_case clk_quick_test_cases[] = {
