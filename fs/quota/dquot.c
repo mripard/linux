@@ -2877,6 +2877,7 @@ static int do_proc_dqstats(struct ctl_table *table, int write,
 	return proc_doulongvec_minmax(table, write, buffer, lenp, ppos);
 }
 
+#ifdef CONFIG_SYSCTL
 static struct ctl_table fs_dqstats_table[] = {
 	{
 		.procname	= "lookups",
@@ -2945,6 +2946,7 @@ static struct ctl_table fs_dqstats_table[] = {
 #endif
 	{ },
 };
+#endif
 
 static int __init dquot_init(void)
 {
@@ -2953,7 +2955,10 @@ static int __init dquot_init(void)
 
 	printk(KERN_NOTICE "VFS: Disk quotas %s\n", __DQUOT_VERSION__);
 
-	register_sysctl("fs/quota", fs_dqstats_table);
+#ifdef CONFIG_SYSCTL
+	if (!register_sysctl("fs/quota", fs_dqstats_table))
+		pr_notice("quota sysctl registration failed!\n");
+#endif
 
 	dquot_cachep = kmem_cache_create("dquot",
 			sizeof(struct dquot), sizeof(unsigned long) * 4,
