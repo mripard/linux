@@ -52,6 +52,7 @@
 #include <linux/version.h>
 #include <net/devlink.h>
 #include "mlx5_core.h"
+#include "thermal.h"
 #include "lib/eq.h"
 #include "fs_core.h"
 #include "lib/mpfs.h"
@@ -191,7 +192,7 @@ static int wait_fw_init(struct mlx5_core_dev *dev, u32 max_wait_mili,
 		if (!(fw_initializing >> 31))
 			break;
 		if (time_after(jiffies, end) ||
-		    test_and_clear_bit(MLX5_BREAK_FW_WAIT, &dev->intf_state)) {
+		    test_bit(MLX5_BREAK_FW_WAIT, &dev->intf_state)) {
 			err = -EBUSY;
 			break;
 		}
@@ -920,7 +921,6 @@ static int mlx5_pci_init(struct mlx5_core_dev *dev, struct pci_dev *pdev,
 	return 0;
 
 err_clr_master:
-	pci_clear_master(dev->pdev);
 	release_bar(dev->pdev);
 err_disable:
 	mlx5_pci_disable_device(dev);
@@ -935,7 +935,6 @@ static void mlx5_pci_close(struct mlx5_core_dev *dev)
 	 */
 	mlx5_drain_health_wq(dev);
 	iounmap(dev->iseg);
-	pci_clear_master(dev->pdev);
 	release_bar(dev->pdev);
 	mlx5_pci_disable_device(dev);
 }
@@ -1771,6 +1770,10 @@ static int probe_one(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (err)
 		dev_err(&pdev->dev, "mlx5_crdump_enable failed with error code %d\n", err);
 
+	err = mlx5_thermal_init(dev);
+	if (err)
+		dev_err(&pdev->dev, "mlx5_thermal_init failed with error code %d\n", err);
+
 	pci_save_state(pdev);
 	devlink_register(devlink);
 	return 0;
@@ -1799,6 +1802,7 @@ static void remove_one(struct pci_dev *pdev)
 	mlx5_drain_fw_reset(dev);
 	devlink_unregister(devlink);
 	mlx5_sriov_disable(pdev);
+	mlx5_thermal_uninit(dev);
 	mlx5_crdump_disable(dev);
 	mlx5_drain_health_wq(dev);
 	mlx5_uninit_one(dev);
