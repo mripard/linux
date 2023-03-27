@@ -2819,7 +2819,6 @@ EXPORT_SYMBOL(dquot_get_state);
 int dquot_set_dqinfo(struct super_block *sb, int type, struct qc_info *ii)
 {
 	struct mem_dqinfo *mi;
-	int err = 0;
 
 	if ((ii->i_fieldmask & QC_WARNS_MASK) ||
 	    (ii->i_fieldmask & QC_RT_SPC_TIMER))
@@ -2846,8 +2845,7 @@ int dquot_set_dqinfo(struct super_block *sb, int type, struct qc_info *ii)
 	spin_unlock(&dq_data_lock);
 	mark_info_dirty(sb, type);
 	/* Force write to disk */
-	sb->dq_op->write_info(sb, type);
-	return err;
+	return sb->dq_op->write_info(sb, type);
 }
 EXPORT_SYMBOL(dquot_set_dqinfo);
 
@@ -2879,6 +2877,7 @@ static int do_proc_dqstats(struct ctl_table *table, int write,
 	return proc_doulongvec_minmax(table, write, buffer, lenp, ppos);
 }
 
+#ifdef CONFIG_SYSCTL
 static struct ctl_table fs_dqstats_table[] = {
 	{
 		.procname	= "lookups",
@@ -2947,24 +2946,7 @@ static struct ctl_table fs_dqstats_table[] = {
 #endif
 	{ },
 };
-
-static struct ctl_table fs_table[] = {
-	{
-		.procname	= "quota",
-		.mode		= 0555,
-		.child		= fs_dqstats_table,
-	},
-	{ },
-};
-
-static struct ctl_table sys_table[] = {
-	{
-		.procname	= "fs",
-		.mode		= 0555,
-		.child		= fs_table,
-	},
-	{ },
-};
+#endif
 
 static int __init dquot_init(void)
 {
@@ -2973,7 +2955,10 @@ static int __init dquot_init(void)
 
 	printk(KERN_NOTICE "VFS: Disk quotas %s\n", __DQUOT_VERSION__);
 
-	register_sysctl_table(sys_table);
+#ifdef CONFIG_SYSCTL
+	if (!register_sysctl("fs/quota", fs_dqstats_table))
+		pr_notice("quota sysctl registration failed!\n");
+#endif
 
 	dquot_cachep = kmem_cache_create("dquot",
 			sizeof(struct dquot), sizeof(unsigned long) * 4,
