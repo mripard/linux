@@ -62,23 +62,8 @@
 #define IW_CUSTOM_MAX	256	/* In bytes */
 #endif
 
-#define skb_tail_pointer_rsl(skb) skb_tail_pointer(skb)
-
-#define queue_delayed_work_rsl(x, y, z) queue_delayed_work(x, y, z)
-#define INIT_DELAYED_WORK_RSL(x, y, z) INIT_DELAYED_WORK(x, y)
-
-#define queue_work_rsl(x, y) queue_work(x, y)
-#define INIT_WORK_RSL(x, y, z) INIT_WORK(x, y)
-
-#define container_of_work_rsl(x, y, z) container_of(x, y, z)
 #define container_of_dwork_rsl(x, y, z)				\
 	container_of(to_delayed_work(x), y, z)
-
-#define iwe_stream_add_event_rsl(info, start, stop, iwe, len)	\
-	iwe_stream_add_event(info, start, stop, iwe, len)
-
-#define iwe_stream_add_point_rsl(info, start, stop, iwe, p)	\
-	iwe_stream_add_point(info, start, stop, iwe, p)
 
 static inline void *netdev_priv_rsl(struct net_device *dev)
 {
@@ -451,7 +436,6 @@ enum led_ctl_mode {
 
 enum rt_rf_type_def {
 	RF_1T2R = 0,
-	RF_2T4R,
 };
 
 enum wireless_mode {
