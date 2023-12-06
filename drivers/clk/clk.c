@@ -575,6 +575,172 @@ static bool clk_core_has_parent(struct clk_core *core, const struct clk_core *pa
 	return false;
 }
 
+#define DEFAULT_AFFECTED_CLK_ENTRIES	8
+
+struct adjacencish_list_item {
+	struct clk_core *core;
+	unsigned long long rate;
+};
+
+struct clk_request {
+	struct clk_core *prime;
+
+	struct adjacencish_list_item *affected_clks;
+	size_t affected_clks_num;
+	size_t affected_clks_size;
+};
+
+static struct adjacencish_list_item *
+clk_request_find_clk_core_slot(struct clk_request *req, struct clk_core *core)
+{
+	unsigned int i;
+
+	for (i = 0; i < req->affected_clks_num; i++) {
+		struct adjacencish_list_item *slot = &req->affected_clks[i];
+
+		if (slot->core == core)
+			return slot;
+	}
+
+	return NULL;
+}
+
+static bool clk_core_is_in_request(struct clk_core *core, struct clk_request *req)
+{
+	return clk_request_find_clk_core_slot(req, core) != NULL;
+}
+
+bool clk_hw_is_in_request(struct clk_hw *hw, struct clk_request *req)
+{
+	return clk_core_is_in_request(hw->core, req);
+}
+
+bool clk_is_in_request(struct clk *clk, struct clk_request *req)
+{
+	bool ret;
+
+	if (!clk)
+		return false;
+
+	/* prevent racing with updates to the clock topology */
+	clk_prepare_lock();
+	ret = clk_core_is_in_request(clk->core, req);
+	clk_prepare_unlock();
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(clk_is_in_request);
+
+unsigned int clk_request_len(struct clk_request *req)
+{
+	return req->affected_clks_num;
+}
+EXPORT_SYMBOL_GPL(clk_request_len);
+
+static struct adjacencish_list_item *
+clk_request_add_affected_clock(struct clk_request *req, struct clk_core *core)
+{
+	struct adjacencish_list_item *slot;
+
+	slot = clk_request_find_clk_core_slot(req, core);
+	if (slot) {
+		pr_info("Clock %s is already in the request. Returning its slot.\n",
+			core->name);
+		return slot;
+	}
+
+	if (req->affected_clks_num == req->affected_clks_size) {
+		size_t new_size = req->affected_clks_size + DEFAULT_AFFECTED_CLK_ENTRIES;
+
+		req->affected_clks = krealloc_array(req->affected_clks,
+						    new_size,
+						    sizeof(*req->affected_clks),
+						    GFP_KERNEL);
+		if (!req->affected_clks)
+			return ERR_PTR(-ENOMEM);
+
+		req->affected_clks_size = new_size;
+	}
+
+	pr_info("Adding clock %s to slot %zu.\n", core->name, req->affected_clks_num);
+	slot = &req->affected_clks[req->affected_clks_num++];
+	slot->core = core;
+
+	return slot;
+}
+
+static int clk_request_add_child_clocks(struct clk_request *req, struct clk_core *core)
+{
+	struct clk_core *child;
+
+	hlist_for_each_entry(child, &core->children, child_node) {
+		struct adjacencish_list_item *slot;
+
+		slot = clk_request_add_affected_clock(req, core);
+		if (IS_ERR(slot))
+			return PTR_ERR(slot);
+	}
+
+	return 0;
+}
+
+int clk_request_add_clock_rate(struct clk_request *req,
+			       struct clk *clk,
+			       unsigned long long rate)
+{
+	struct adjacencish_list_item *slot;
+	struct clk_core *core = clk->core;
+	int ret;
+
+	slot = clk_request_add_affected_clock(req, core);
+	if (IS_ERR(slot))
+		return PTR_ERR(slot);
+
+	ret = clk_request_add_child_clocks(req, core);
+	if (ret)
+		return ret;
+
+	if (core->flags & CLK_SET_RATE_PARENT && core->parent) {
+		ret = clk_request_add_child_clocks(req, core->parent);
+		if (ret)
+			return ret;
+	}
+
+	slot->rate = rate;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(clk_request_add_clock_rate);
+
+static struct clk_request *
+clk_core_start_request(struct clk_core *core)
+{
+	struct clk_request *req;
+
+	req = kzalloc(sizeof(*req), GFP_KERNEL);
+	if (!req)
+		return ERR_PTR(-ENOMEM);
+
+	req->affected_clks = kmalloc_array(DEFAULT_AFFECTED_CLK_ENTRIES,
+					   sizeof(*req->affected_clks),
+					   GFP_KERNEL);
+	if (!req->affected_clks) {
+		kfree(req);
+		return ERR_PTR(-ENOMEM);
+	}
+	req->affected_clks_size = DEFAULT_AFFECTED_CLK_ENTRIES;
+
+	req->prime = core;
+
+	return req;
+}
+
+struct clk_request *clk_start_request(struct clk *clk)
+{
+	return clk_core_start_request(clk->core);
+}
+EXPORT_SYMBOL_GPL(clk_start_request);
+
 static void
 clk_core_forward_rate_req(struct clk_core *core,
 			  const struct clk_rate_request *old_req,

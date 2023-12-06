@@ -15,6 +15,7 @@
 
 struct device;
 struct clk;
+struct clk_request;
 struct device_node;
 struct of_phandle_args;
 
@@ -796,6 +797,11 @@ int clk_set_rate(struct clk *clk, unsigned long rate);
  * Returns success (0) or negative errno.
  */
 int clk_set_rate_exclusive(struct clk *clk, unsigned long rate);
+
+struct clk_request *clk_start_request(struct clk *clk);
+int clk_request_add_clock_rate(struct clk_request *req, struct clk *clk, unsigned long long rate);
+unsigned int clk_request_len(struct clk_request *req);
+bool clk_is_in_request(struct clk *clk, struct clk_request *req);
 
 /**
  * clk_has_parent - check if a clock is a possible parent for another

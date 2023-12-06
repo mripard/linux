@@ -36,6 +36,7 @@
 struct clk;
 struct clk_hw;
 struct clk_core;
+struct clk_request;
 struct dentry;
 
 /**
@@ -1341,6 +1342,8 @@ void clk_hw_get_rate_range(struct clk_hw *hw, unsigned long *min_rate,
 			   unsigned long *max_rate);
 void clk_hw_set_rate_range(struct clk_hw *hw, unsigned long min_rate,
 			   unsigned long max_rate);
+
+bool clk_hw_is_in_request(struct clk_hw *hw, struct clk_request *req);
 
 static inline void __clk_hw_set_clk(struct clk_hw *dst, struct clk_hw *src)
 {
