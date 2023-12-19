@@ -390,6 +390,164 @@ static void clk_request_test_siblings_clocks_set_rate(struct kunit *test)
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(child_2, req));
 }
 
+static void clk_request_test_siblings_3_levels_set_rate_last_level(struct kunit *test)
+{
+	struct clk_hw *top;
+	struct clk_hw *middle_left, *middle_right;
+	struct clk_hw *bottom_left_left, *bottom_left_right,
+		*bottom_right_left, *bottom_right_right;
+	struct clk_request *req;
+	struct clk *clk;
+	int ret;
+
+	top = clk_test_create_dummy(test,
+				    "top",
+				    0,
+				    DUMMY_CLOCK_RATE_1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, top);
+
+	middle_left = clk_test_create_dummy_div(test,
+						top,
+						"middle-left",
+						0,
+						1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, middle_left);
+
+	middle_right = clk_test_create_dummy_div(test,
+						 top,
+						 "middle-right",
+						 0,
+						 1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, middle_right);
+
+	bottom_left_left =
+		clk_test_create_dummy_div(test,
+					  middle_left,
+					  "bottom-left-left",
+					  CLK_SET_RATE_PARENT,
+					  1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_left_left);
+
+	bottom_left_right =
+		clk_test_create_dummy_div(test,
+					  middle_left,
+					  "bottom-left-right",
+					  CLK_SET_RATE_PARENT,
+					  1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_left_right);
+
+	bottom_right_left =
+		clk_test_create_dummy_div(test,
+					  middle_right,
+					  "bottom-right-left",
+					  CLK_SET_RATE_PARENT,
+					  1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_right_left);
+
+	bottom_right_right =
+		clk_test_create_dummy_div(test,
+					  middle_right,
+					  "bottom-right-right",
+					  CLK_SET_RATE_PARENT,
+					  1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_right_right);
+
+	clk = clk_hw_get_clk(bottom_left_left, NULL);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
+
+	req = clk_start_request(clk);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
+
+	ret = clk_request_add_clock_rate(req, clk, 144000000);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+
+	KUNIT_EXPECT_EQ(test, clk_request_len(req), 3);
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(middle_left, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom_left_left, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom_left_right, req));
+}
+
+static void clk_request_test_siblings_3_levels_set_rate_all_levels(struct kunit *test)
+{
+	struct clk_hw *top;
+	struct clk_hw *middle_left, *middle_right;
+	struct clk_hw *bottom_left_left, *bottom_left_right,
+		*bottom_right_left, *bottom_right_right;
+	struct clk_request *req;
+	struct clk *clk;
+	int ret;
+
+	top = clk_test_create_dummy(test,
+				    "top",
+				    0,
+				    DUMMY_CLOCK_RATE_1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, top);
+
+	middle_left = clk_test_create_dummy_div(test,
+						top,
+						"middle-left",
+						CLK_SET_RATE_PARENT,
+						1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, middle_left);
+
+	middle_right = clk_test_create_dummy_div(test,
+						 top,
+						 "middle-right",
+						 CLK_SET_RATE_PARENT,
+						 1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, middle_right);
+
+	bottom_left_left =
+		clk_test_create_dummy_div(test,
+					  middle_left,
+					  "bottom-left-left",
+					  CLK_SET_RATE_PARENT,
+					  1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_left_left);
+
+	bottom_left_right =
+		clk_test_create_dummy_div(test,
+					  middle_left,
+					  "bottom-left-right",
+					  CLK_SET_RATE_PARENT,
+					  1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_left_right);
+
+	bottom_right_left =
+		clk_test_create_dummy_div(test,
+					  middle_right,
+					  "bottom-right-left",
+					  CLK_SET_RATE_PARENT,
+					  1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_right_left);
+
+	bottom_right_right =
+		clk_test_create_dummy_div(test,
+					  middle_right,
+					  "bottom-right-right",
+					  CLK_SET_RATE_PARENT,
+					  1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_right_right);
+
+	clk = clk_hw_get_clk(bottom_left_left, NULL);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
+
+	req = clk_start_request(clk);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
+
+	ret = clk_request_add_clock_rate(req, clk, 144000000);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+
+	KUNIT_EXPECT_EQ(test, clk_request_len(req), 7);
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(top, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(middle_left, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(middle_right, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom_left_left, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom_left_right, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom_right_left, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom_right_right, req));
+}
+
 static void clk_request_test_4(struct kunit *test)
 {
 	/*
@@ -459,6 +617,8 @@ static struct kunit_case clk_request_test_cases[] = {
 	KUNIT_CASE(clk_request_test_lone_clock_set_rate),
 	KUNIT_CASE(clk_request_test_lone_mux_clock),
 	KUNIT_CASE(clk_request_test_siblings_clocks_set_rate),
+	KUNIT_CASE(clk_request_test_siblings_3_levels_set_rate_all_levels),
+	KUNIT_CASE(clk_request_test_siblings_3_levels_set_rate_last_level),
 	KUNIT_CASE(clk_request_test_2),
 	KUNIT_CASE(clk_request_test_4),
 	KUNIT_CASE(clk_request_test_5),

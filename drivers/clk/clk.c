@@ -591,7 +591,7 @@ struct clk_request {
 };
 
 static struct adjacencish_list_item *
-clk_request_find_clk_core_slot(struct clk_request *req, struct clk_core *core)
+clk_request_find_slot_by_clk_core(struct clk_request *req, struct clk_core *core)
 {
 	unsigned int i;
 
@@ -607,7 +607,7 @@ clk_request_find_clk_core_slot(struct clk_request *req, struct clk_core *core)
 
 static bool clk_core_is_in_request(struct clk_core *core, struct clk_request *req)
 {
-	return clk_request_find_clk_core_slot(req, core) != NULL;
+	return clk_request_find_slot_by_clk_core(req, core) != NULL;
 }
 
 bool clk_hw_is_in_request(struct clk_hw *hw, struct clk_request *req)
@@ -631,6 +631,19 @@ bool clk_is_in_request(struct clk *clk, struct clk_request *req)
 }
 EXPORT_SYMBOL_GPL(clk_is_in_request);
 
+static bool clk_request_is_clk_core_top(struct clk_request *req, struct clk_core *core)
+{
+	struct clk_core *parent = core->parent;
+
+	if (!parent)
+		return true;
+
+	if (!clk_core_is_in_request(parent, req))
+	    return true;
+
+	return false;
+}
+
 unsigned int clk_request_len(struct clk_request *req)
 {
 	return req->affected_clks_num;
@@ -638,11 +651,13 @@ unsigned int clk_request_len(struct clk_request *req)
 EXPORT_SYMBOL_GPL(clk_request_len);
 
 static struct adjacencish_list_item *
-clk_request_add_affected_clock(struct clk_request *req, struct clk_core *core)
+clk_request_create_slot(struct clk_request *req, struct clk_core *core)
 {
 	struct adjacencish_list_item *slot;
 
-	slot = clk_request_find_clk_core_slot(req, core);
+	pr_info("Adding %s\n", core->name);
+
+	slot = clk_request_find_slot_by_clk_core(req, core);
 	if (slot) {
 		pr_info("Clock %s is already in the request. Returning its slot.\n",
 			core->name);
@@ -673,15 +688,47 @@ static int clk_request_add_child_clocks(struct clk_request *req, struct clk_core
 {
 	struct clk_core *child;
 
+	pr_info("Adding all childs of %s\n", core->name);
+
 	hlist_for_each_entry(child, &core->children, child_node) {
 		struct adjacencish_list_item *slot;
+		int ret;
 
-		slot = clk_request_add_affected_clock(req, core);
+		slot = clk_request_create_slot(req, child);
 		if (IS_ERR(slot))
 			return PTR_ERR(slot);
+
+		ret = clk_request_add_child_clocks(req, child);
+		if (ret)
+			return ret;
 	}
 
 	return 0;
+}
+
+static struct adjacencish_list_item *
+clk_request_add_affected_clock(struct clk_request *req, struct clk_core *core)
+{
+	struct adjacencish_list_item *slot;
+	int ret;
+
+	slot = clk_request_create_slot(req, core);
+	if (IS_ERR(slot))
+		return slot;
+
+	ret = clk_request_add_child_clocks(req, core);
+	if (ret)
+		return ERR_PTR(ret);
+
+	if (core->flags & CLK_SET_RATE_PARENT && core->parent) {
+		struct adjacencish_list_item *pslot;
+
+		pslot = clk_request_add_affected_clock(req, core->parent);
+		if (IS_ERR(pslot))
+			return pslot;
+	}
+
+	return slot;
 }
 
 int clk_request_add_clock_rate(struct clk_request *req,
@@ -690,21 +737,12 @@ int clk_request_add_clock_rate(struct clk_request *req,
 {
 	struct adjacencish_list_item *slot;
 	struct clk_core *core = clk->core;
-	int ret;
+
+	pr_info("Specifying rate %llu for clock %s\n", rate, __clk_get_name(clk));
 
 	slot = clk_request_add_affected_clock(req, core);
 	if (IS_ERR(slot))
 		return PTR_ERR(slot);
-
-	ret = clk_request_add_child_clocks(req, core);
-	if (ret)
-		return ret;
-
-	if (core->flags & CLK_SET_RATE_PARENT && core->parent) {
-		ret = clk_request_add_child_clocks(req, core->parent);
-		if (ret)
-			return ret;
-	}
 
 	slot->rate = rate;
 
@@ -740,6 +778,79 @@ struct clk_request *clk_start_request(struct clk *clk)
 	return clk_core_start_request(clk->core);
 }
 EXPORT_SYMBOL_GPL(clk_start_request);
+
+static int clk_request_check_clk(struct clk_request *req,
+				 struct adjacencish_list_item *item)
+{
+	struct clk_core *child;
+
+	hlist_for_each_entry(child, &core->children, child_node) {
+		struct adjacencish_list_item *slot;
+		int ret;
+
+		slot = clk_request_find_slot_by_clk_core(req, child);
+		if (!slot)
+			continue;
+
+		ret = clk_request_check_clk(req, slot);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
+static int clk_request_check_nolock(struct clk_request *req)
+{
+	unsigned int i;
+
+	lockdep_assert_held(&prepare_lock);
+
+	for (i = 0; i < req->affected_clks_num; i++) {
+		struct adjacencish_list_item *slot = &req->affected_clks[i];
+		struct clk_core *core = slot->core;
+		int ret;
+
+		if (!clk_request_is_clk_core_top(req, core))
+			continue;
+
+		ret = clk_request_check_clk(req, slot);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
+int clk_request_check(struct clk_request *req)
+{
+	int ret;
+
+	clk_prepare_lock();
+	ret = clk_request_check_nolock(req);
+	clk_prepare_unlock();
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(clk_request_check);
+
+int clk_request_commit(struct clk_request *req)
+{
+	int ret;
+
+	clk_prepare_lock();
+
+	ret = clk_request_check_nolock(req);
+	if (ret) {
+		clk_prepare_unlock();
+		return ret;
+	}
+
+	clk_prepare_unlock();
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(clk_request_commit);
 
 static void
 clk_core_forward_rate_req(struct clk_core *core,
