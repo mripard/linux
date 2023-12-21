@@ -267,6 +267,7 @@ struct clk_ops {
 	int		(*init)(struct clk_hw *hw);
 	void		(*terminate)(struct clk_hw *hw);
 	void		(*debug_init)(struct clk_hw *hw, struct dentry *dentry);
+	int		(*check_request)(struct clk_hw *hw, struct clk_request *req);
 };
 
 /**

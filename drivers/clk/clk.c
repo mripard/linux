@@ -751,7 +751,7 @@ int clk_request_add_clock_rate(struct clk_request *req,
 EXPORT_SYMBOL_GPL(clk_request_add_clock_rate);
 
 static struct clk_request *
-clk_core_start_request(struct clk_core *core)
+clk_core_request_get(struct clk_core *core)
 {
 	struct clk_request *req;
 
@@ -773,20 +773,36 @@ clk_core_start_request(struct clk_core *core)
 	return req;
 }
 
-struct clk_request *clk_start_request(struct clk *clk)
+struct clk_request *clk_request_get(struct clk *clk)
 {
-	return clk_core_start_request(clk->core);
+	return clk_core_request_get(clk->core);
 }
-EXPORT_SYMBOL_GPL(clk_start_request);
+EXPORT_SYMBOL_GPL(clk_request_get);
+
+void clk_request_put(struct clk_request *req)
+{
+
+}
+EXPORT_SYMBOL_GPL(clk_request_put);
 
 static int clk_request_check_clk(struct clk_request *req,
 				 struct adjacencish_list_item *item)
 {
+	struct clk_core *core = item->core;
 	struct clk_core *child;
+	int ret;
 
+	pr_crit("%s +%d\n", __func__, __LINE__);
+
+	if (core->ops->check_request) {
+		ret = core->ops->check_request(core->hw, req);
+		if (ret)
+			return ret;
+	}
+
+	pr_crit("%s +%d\n", __func__, __LINE__);
 	hlist_for_each_entry(child, &core->children, child_node) {
 		struct adjacencish_list_item *slot;
-		int ret;
 
 		slot = clk_request_find_slot_by_clk_core(req, child);
 		if (!slot)
@@ -811,9 +827,14 @@ static int clk_request_check_nolock(struct clk_request *req)
 		struct clk_core *core = slot->core;
 		int ret;
 
-		if (!clk_request_is_clk_core_top(req, core))
-			continue;
+		pr_info("Found clock %s in request\n", core->name);
 
+		if (!clk_request_is_clk_core_top(req, core)) {
+			pr_info("Clock is not a top clock, skipping.\n");
+			continue;
+		}
+
+		pr_crit("%s +%d\n", __func__, __LINE__);
 		ret = clk_request_check_clk(req, slot);
 		if (ret)
 			return ret;
@@ -847,6 +868,8 @@ int clk_request_commit(struct clk_request *req)
 	}
 
 	clk_prepare_unlock();
+
+	clk_request_put(req);
 
 	return 0;
 }
