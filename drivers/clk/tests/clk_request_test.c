@@ -440,7 +440,7 @@ static void clk_request_test_lone_clock_set_rate_checked(struct kunit *test)
 	child = clk_test_create_dummy_div(test,
 					  parent,
 					  "test",
-					  0,
+					  CLK_SET_RATE_PARENT,
 					  1);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, child);
 	child_ctx = hw_to_div(child);
@@ -456,7 +456,7 @@ static void clk_request_test_lone_clock_set_rate_checked(struct kunit *test)
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
-	KUNIT_ASSERT_EQ(test, clk_request_len(req), 1);
+	KUNIT_ASSERT_EQ(test, clk_request_len(req), 2);
 
 	ret = clk_request_check(req);
 	KUNIT_EXPECT_EQ(test, ret, 0);
@@ -883,6 +883,7 @@ static struct kunit_case clk_request_test_cases[] = {
 	KUNIT_CASE(clk_request_test_lone_clock),
 	KUNIT_CASE(clk_request_test_lone_clock_checked),
 	KUNIT_CASE(clk_request_test_lone_clock_set_rate),
+	KUNIT_CASE(clk_request_test_lone_clock_set_rate_checked),
 	KUNIT_CASE(clk_request_test_lone_mux_clock),
 	KUNIT_CASE(clk_request_test_parent_clock),
 	KUNIT_CASE(clk_request_test_parent_clock_3_levels),
@@ -891,11 +892,12 @@ static struct kunit_case clk_request_test_cases[] = {
 	KUNIT_CASE(clk_request_test_siblings_3_levels_set_rate_last_level),
 	KUNIT_CASE(clk_request_test_single_clock_checked),
 	KUNIT_CASE(clk_request_test_4),
-	KUNIT_CASE(clk_request_test_6),
-	KUNIT_CASE(clk_request_test_7),
-	KUNIT_CASE(clk_request_test_8),
 	KUNIT_CASE(clk_request_test_9),
 	KUNIT_CASE(clk_request_test_10),
+	KUNIT_CASE(clk_request_test_11),
+	KUNIT_CASE(clk_request_test_12),
+	KUNIT_CASE(clk_request_test_13),
+	KUNIT_CASE(clk_request_test_14),
 	{}
 };
 
