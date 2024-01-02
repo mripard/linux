@@ -36,6 +36,7 @@
 struct clk;
 struct clk_hw;
 struct clk_core;
+struct clk_hw_request;
 struct clk_request;
 struct dentry;
 
@@ -267,7 +268,7 @@ struct clk_ops {
 	int		(*init)(struct clk_hw *hw);
 	void		(*terminate)(struct clk_hw *hw);
 	void		(*debug_init)(struct clk_hw *hw, struct dentry *dentry);
-	int		(*check_request)(struct clk_hw *hw, struct clk_request *req);
+	int		(*check_request)(struct clk_hw *hw, struct clk_hw_request *req);
 };
 
 /**
@@ -1345,6 +1346,14 @@ void clk_hw_set_rate_range(struct clk_hw *hw, unsigned long min_rate,
 			   unsigned long max_rate);
 
 bool clk_hw_is_in_request(struct clk_hw *hw, struct clk_request *req);
+unsigned long long clk_hw_request_get_requested_rate(struct clk_hw_request *req);
+struct clk_hw *clk_hw_request_get_requested_parent(struct clk_hw_request *req);
+void clk_hw_request_set_desired_rate(struct clk_hw_request *req,
+				     unsigned long long rate);
+void clk_hw_request_set_desired_parent_rate(struct clk_hw_request *req,
+					    unsigned long long rate);
+void clk_hw_request_set_desired_parent(struct clk_hw_request *req,
+				       struct clk_hw *parent);
 
 static inline void __clk_hw_set_clk(struct clk_hw *dst, struct clk_hw *src)
 {
