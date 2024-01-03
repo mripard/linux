@@ -1,4 +1,5 @@
 #include <kunit/test.h>
+#include <kunit/test-bug.h>
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 
@@ -16,11 +17,22 @@ struct clk_dummy_context {
 	container_of_const(_hw, struct clk_dummy_context, hw)
 
 static int clk_dummy_check_request(struct clk_hw *hw,
+				   unsigned int try,
 				   struct clk_hw_request *req)
 {
 	struct clk_dummy_context *ctx = hw_to_dummy(hw);
+	unsigned long long rate;
 
 	ctx->check_called++;
+
+	rate = clk_hw_request_get_requested_rate(req);
+	if (!rate)
+		return 0;
+
+	if (clk_hw_get_flags(hw) & CLK_SET_RATE_PARENT)
+		clk_hw_request_set_desired_parent(req,
+						  clk_hw_get_parent(hw),
+						  rate);
 
 	return 0;
 }
@@ -67,24 +79,42 @@ struct clk_div_context {
 	container_of_const(_hw, struct clk_div_context, hw)
 
 static int clk_div_check_request(struct clk_hw *hw,
+				 unsigned int try,
 				 struct clk_hw_request *req)
 {
 	struct clk_div_context *ctx = hw_to_div(hw);
+	unsigned long long rate;
 
 	ctx->check_called++;
+
+	rate = clk_hw_request_get_requested_rate(req);
+	if (!rate)
+		return 0;
+
+	if (clk_hw_get_flags(hw) & CLK_SET_RATE_PARENT)
+		clk_hw_request_set_desired_parent(req,
+						  clk_hw_get_parent(hw),
+						  rate);
 
 	return 0;
 }
 
 static int clk_div_check_request_always_modify_parent(struct clk_hw *hw,
+						      unsigned int try,
 						      struct clk_hw_request *req)
 {
 	struct clk_div_context *ctx = hw_to_div(hw);
 	struct clk_hw *parent = clk_hw_get_parent(hw);
 	unsigned long long parent_rate = clk_hw_get_rate(parent);
+	unsigned long long rate;
+
+	ctx->check_called++;
+
+	rate = clk_hw_request_get_requested_rate(req);
+	if (!rate)
+		return 0;
 
 	clk_hw_request_set_desired_parent_rate(req, parent_rate * 2);
-	ctx->check_called++;
 
 	return 0;
 }
@@ -117,11 +147,52 @@ struct clk_mux_context {
 	container_of_const(_hw, struct clk_mux_context, hw)
 
 static int clk_mux_check_request(struct clk_hw *hw,
-				   struct clk_hw_request *req)
+				 unsigned int try,
+				 struct clk_hw_request *req)
 {
 	struct clk_mux_context *ctx = hw_to_mux(hw);
 
 	ctx->check_called++;
+
+	if (clk_hw_get_flags(hw) & CLK_SET_RATE_PARENT)
+		clk_hw_request_set_desired_parent(req,
+						  clk_hw_get_parent(hw),
+						  clk_hw_request_get_requested_rate(req));
+
+	return 0;
+}
+
+static int clk_mux_check_request_iterate_parent(struct clk_hw *hw,
+						unsigned int try,
+						struct clk_hw_request *req)
+{
+	struct clk_mux_context *ctx = hw_to_mux(hw);
+	struct kunit *test = kunit_get_current_test();
+	unsigned long long parent_rate;
+	unsigned int num_parents = clk_hw_get_num_parents(hw);
+	struct clk_hw *parent;
+	int parent_idx;
+
+	ctx->check_called++;
+
+	parent_idx = clk_hw_get_parent_index(hw);
+	KUNIT_ASSERT_GE(test, parent_idx, 0);
+
+	parent_idx = (parent_idx + 1) + try;
+	if (parent_idx >= num_parents)
+		parent_idx = num_parents - 1;
+
+	parent = clk_hw_get_parent_by_index(hw, parent_idx);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, parent);
+
+	if (clk_hw_get_flags(hw) & CLK_SET_RATE_PARENT)
+		parent_rate = clk_hw_request_get_requested_rate(req);
+	else
+		parent_rate = clk_hw_get_rate(parent);
+
+	clk_hw_request_set_desired_parent(req,
+					  parent,
+					  parent_rate);
 
 	return 0;
 }
@@ -147,6 +218,13 @@ static u8 clk_multiple_parents_mux_get_parent(struct clk_hw *hw)
 
 static const struct clk_ops clk_multiple_parents_mux_ops = {
 	.check_request = clk_mux_check_request,
+	.get_parent = clk_multiple_parents_mux_get_parent,
+	.set_parent = clk_multiple_parents_mux_set_parent,
+	.determine_rate = __clk_mux_determine_rate_closest,
+};
+
+static const struct clk_ops clk_multiple_parents_mux_ops_iterate_parent = {
+	.check_request = clk_mux_check_request_iterate_parent,
 	.get_parent = clk_multiple_parents_mux_get_parent,
 	.set_parent = clk_multiple_parents_mux_set_parent,
 	.determine_rate = __clk_mux_determine_rate_closest,
@@ -235,18 +313,19 @@ clk_test_create_dummy_div(struct kunit *test,
 }
 
 static struct clk_hw *
-clk_test_create_mux(struct kunit *test,
-		    const struct clk_hw	**parent_hws, size_t num_parents,
-		    const char *name,
-		    unsigned long flags,
-		    unsigned int default_parent)
+clk_test_create_mux_with_ops(struct kunit *test,
+			     const struct clk_hw **parent_hws, size_t num_parents,
+			     const struct clk_ops *ops,
+			     const char *name,
+			     unsigned long flags,
+			     unsigned int default_parent)
 {
 	const struct clk_init_data data = {
 		.flags = flags,
 		.name = name,
 		.parent_hws = parent_hws,
 		.num_parents = num_parents,
-		.ops = &clk_multiple_parents_mux_ops,
+		.ops = ops,
 	};
 	struct clk_mux_context *ctx;
 	struct clk_hw *hw;
@@ -266,6 +345,20 @@ clk_test_create_mux(struct kunit *test,
 	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	return hw;
+}
+
+static struct clk_hw *
+clk_test_create_mux(struct kunit *test,
+		    const struct clk_hw **parent_hws, size_t num_parents,
+		    const char *name,
+		    unsigned long flags,
+		    unsigned int default_parent)
+{
+	return clk_test_create_mux_with_ops(test,
+					    parent_hws, num_parents,
+					    &clk_multiple_parents_mux_ops,
+					    name, flags,
+					    default_parent);
 }
 
 KUNIT_DEFINE_ACTION_WRAPPER(clk_request_put_wrapper,
@@ -308,6 +401,8 @@ static void clk_request_test_lone_clock(struct kunit *test)
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
 
+	ret = clk_request_check(req);
+	KUNIT_EXPECT_EQ(test, ret, 0);
 	KUNIT_EXPECT_EQ(test, clk_request_len(req), 1);
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(child, req));
 }
@@ -357,6 +452,8 @@ static void clk_request_test_lone_mux_clock(struct kunit *test)
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
 
+	ret = clk_request_check(req);
+	KUNIT_EXPECT_EQ(test, ret, 0);
 	KUNIT_EXPECT_EQ(test, clk_request_len(req), 1);
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(child, req));
 }
@@ -569,6 +666,8 @@ static void clk_request_test_lone_clock_set_rate(struct kunit *test)
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
 
+	ret = clk_request_check(req);
+	KUNIT_EXPECT_EQ(test, ret, 0);
 	KUNIT_EXPECT_EQ(test, clk_request_len(req), 2);
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(child, req));
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(parent, req));
@@ -614,12 +713,12 @@ static void clk_request_test_lone_clock_set_rate_checked(struct kunit *test)
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
-	KUNIT_ASSERT_EQ(test, clk_request_len(req), 2);
 
 	ret = clk_request_check(req);
 	KUNIT_EXPECT_EQ(test, ret, 0);
-	KUNIT_EXPECT_EQ(test, parent_ctx->check_called, 1);
-	KUNIT_EXPECT_EQ(test, child_ctx->check_called, 1);
+	KUNIT_EXPECT_EQ(test, clk_request_len(req), 2);
+	KUNIT_EXPECT_GE(test, parent_ctx->check_called, 1);
+	KUNIT_EXPECT_GE(test, child_ctx->check_called, 1);
 }
 
 /*
@@ -665,6 +764,8 @@ static void clk_request_test_parent_clock(struct kunit *test)
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
 
+	ret = clk_request_check(req);
+	KUNIT_EXPECT_EQ(test, ret, 0);
 	KUNIT_EXPECT_EQ(test, clk_request_len(req), 3);
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(parent, req));
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(child_1, req));
@@ -710,6 +811,8 @@ static void clk_request_test_parent_clock_3_levels(struct kunit *test)
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
 
+	ret = clk_request_check(req);
+	KUNIT_EXPECT_EQ(test, ret, 0);
 	KUNIT_EXPECT_EQ(test, clk_request_len(req), 3);
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(top, req));
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(middle, req));
@@ -759,6 +862,8 @@ static void clk_request_test_siblings_clocks_set_rate(struct kunit *test)
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
 
+	ret = clk_request_check(req);
+	KUNIT_EXPECT_EQ(test, ret, 0);
 	KUNIT_EXPECT_EQ(test, clk_request_len(req), 3);
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(parent, req));
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(child_1, req));
@@ -839,6 +944,8 @@ static void clk_request_test_siblings_3_levels_set_rate_last_level(struct kunit 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
 
+	ret = clk_request_check(req);
+	KUNIT_EXPECT_EQ(test, ret, 0);
 	KUNIT_EXPECT_EQ(test, clk_request_len(req), 3);
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(middle_left, req));
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom_left_left, req));
@@ -919,6 +1026,8 @@ static void clk_request_test_siblings_3_levels_set_rate_all_levels(struct kunit 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
 
+	ret = clk_request_check(req);
+	KUNIT_EXPECT_EQ(test, ret, 0);
 	KUNIT_EXPECT_EQ(test, clk_request_len(req), 7);
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(top, req));
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(middle_left, req));
@@ -957,15 +1066,151 @@ static void clk_request_test_10(struct kunit *test)
 	 */
 }
 
-static void clk_request_test_11(struct kunit *test)
+/*
+ * Test that if the clock that was the trigger of the request wants to
+ * change its parent, the old clocks that were there by side effect (its
+ * old parent, its old siblings) will no longer be part of the request,
+ * and its new parent and siblings will be.
+ */
+static void clk_request_test_reparent(struct kunit *test)
 {
-	/*
-	 * TODO: Test that if the clock that was the trigger of the
-	 * request wants to change its parent, and if it has
-	 * SET_PARENT_RATE, the old clocks that were there by side
-	 * effect (its old parent, its old siblings) will no longer be
-	 * part of the request, and its new parent and siblings will be.
-	 */
+	struct clk_hw *top_left, *top_right;
+	struct clk_hw *bottom_left, *bottom_middle, *bottom_right;
+	const struct clk_hw *parents[2];
+	struct clk_request *req;
+	struct clk *clk;
+	int ret;
+
+	top_left = clk_test_create_dummy(test,
+					 "top-left",
+					 0,
+					 DUMMY_CLOCK_RATE_1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, top_left);
+
+	top_right = clk_test_create_dummy(test,
+					  "top-right",
+					  0,
+					  DUMMY_CLOCK_RATE_2);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, top_right);
+
+	bottom_left = clk_test_create_dummy_div(test,
+						top_left,
+						"bottom-left",
+						0,
+						1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_left);
+
+	parents[0] = top_left;
+	parents[1] = top_right;
+	bottom_middle = clk_test_create_mux_with_ops(test,
+						     parents, ARRAY_SIZE(parents),
+						     &clk_multiple_parents_mux_ops_iterate_parent,
+						     "bottom-middle",
+						     0,
+						     0);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_middle);
+
+	bottom_right = clk_test_create_dummy_div(test,
+						 top_right,
+						 "bottom-right",
+						 0,
+						 1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_right);
+
+	clk = clk_hw_get_clk(bottom_middle, NULL);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
+
+	req = clk_request_get(clk);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
+
+	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+
+	ret = clk_request_add_clock_rate(req, clk, 144000000);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+
+	ret = clk_request_check(req);
+	KUNIT_EXPECT_EQ(test, ret, 0);
+	KUNIT_EXPECT_EQ(test, clk_request_len(req), 3);
+	KUNIT_EXPECT_FALSE(test, clk_hw_is_in_request(top_left, req));
+	KUNIT_EXPECT_FALSE(test, clk_hw_is_in_request(bottom_left, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(top_right, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom_middle, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom_right, req));
+}
+
+/*
+ * Test that if the clock that was the trigger of the request wants to
+ * change its parent, and if it has SET_PARENT_RATE, the old clocks that
+ * were there by side effect (its old parent, its old siblings) will no
+ * longer be part of the request, and its new parent and siblings will
+ * be.
+ */
+static void clk_request_test_reparent_set_rate(struct kunit *test)
+{
+	struct clk_hw *top_left, *top_right;
+	struct clk_hw *bottom_left, *bottom_middle, *bottom_right;
+	const struct clk_hw *parents[2];
+	struct clk_request *req;
+	struct clk *clk;
+	int ret;
+
+	top_left = clk_test_create_dummy(test,
+					 "top-left",
+					 0,
+					 DUMMY_CLOCK_RATE_1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, top_left);
+
+	top_right = clk_test_create_dummy(test,
+					  "top-right",
+					  0,
+					  DUMMY_CLOCK_RATE_2);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, top_right);
+
+	bottom_left = clk_test_create_dummy_div(test,
+						top_left,
+						"bottom-left",
+						CLK_SET_RATE_PARENT,
+						1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_left);
+
+	parents[0] = top_left;
+	parents[1] = top_right;
+	bottom_middle = clk_test_create_mux_with_ops(test,
+						     parents, ARRAY_SIZE(parents),
+						     &clk_multiple_parents_mux_ops_iterate_parent,
+						     "bottom-middle",
+						     CLK_SET_RATE_PARENT,
+						     0);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_middle);
+
+	bottom_right = clk_test_create_dummy_div(test,
+						 top_right,
+						 "bottom-right",
+						 CLK_SET_RATE_PARENT,
+						 1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_right);
+
+	clk = clk_hw_get_clk(bottom_middle, NULL);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
+
+	req = clk_request_get(clk);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
+
+	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+
+	ret = clk_request_add_clock_rate(req, clk, 144000000);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+
+	ret = clk_request_check(req);
+	KUNIT_EXPECT_EQ(test, ret, 0);
+	KUNIT_EXPECT_EQ(test, clk_request_len(req), 3);
+	KUNIT_EXPECT_FALSE(test, clk_hw_is_in_request(top_left, req));
+	KUNIT_EXPECT_FALSE(test, clk_hw_is_in_request(bottom_left, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(top_right, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom_middle, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom_right, req));
 }
 
 static void clk_request_test_12(struct kunit *test)
@@ -1006,6 +1251,8 @@ static struct kunit_case clk_request_test_cases[] = {
 	KUNIT_CASE(clk_request_test_lone_mux_clock),
 	KUNIT_CASE(clk_request_test_parent_clock),
 	KUNIT_CASE(clk_request_test_parent_clock_3_levels),
+	KUNIT_CASE(clk_request_test_reparent),
+	KUNIT_CASE(clk_request_test_reparent_set_rate),
 	KUNIT_CASE(clk_request_test_siblings_clocks_set_rate),
 	KUNIT_CASE(clk_request_test_siblings_3_levels_set_rate_all_levels),
 	KUNIT_CASE(clk_request_test_siblings_3_levels_set_rate_last_level),
@@ -1013,7 +1260,6 @@ static struct kunit_case clk_request_test_cases[] = {
 	KUNIT_CASE(clk_request_test_4),
 	KUNIT_CASE(clk_request_test_9),
 	KUNIT_CASE(clk_request_test_10),
-	KUNIT_CASE(clk_request_test_11),
 	KUNIT_CASE(clk_request_test_12),
 	KUNIT_CASE(clk_request_test_13),
 	KUNIT_CASE(clk_request_test_14),

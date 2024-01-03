@@ -624,6 +624,7 @@ void clk_hw_request_set_desired_parent(struct clk_hw_request *req,
 				       const struct clk_hw *parent,
 				       unsigned long long rate)
 {
+	pr_crit("%s +%d %s %llu \n", __func__, __LINE__, parent->core->name, rate);
 	req->desired.parent = parent->core;
 	req->desired.parent_rate = rate;
 }
@@ -644,12 +645,12 @@ static void clk_hw_request_dump(const struct clk_hw_request *req)
 	pr_info("\tRequested:\n");
 	pr_info("\t\trate: %llu Hz\n", req->requested.rate);
 	if (req->requested.parent)
-		pr_info("\t\tparent %s\n", req->requested.parent->name);
+		pr_info("\t\tparent: %s\n", req->requested.parent->name);
 
 	pr_info("\tDesired:\n");
 	pr_info("\t\trate: %llu Hz\n", req->requested.rate);
 	if (req->desired.parent)
-		pr_info("\t\tparent %s\n", req->desired.parent->name);
+		pr_info("\t\tparent: %s\n", req->desired.parent->name);
 	pr_info("\t\tparent rate: %llu Hz\n", req->desired.parent_rate);
 }
 
@@ -775,14 +776,6 @@ clk_request_add_affected_clock(struct clk_request *req, struct clk_core *core)
 	if (ret)
 		return ERR_PTR(ret);
 
-	if (core->flags & CLK_SET_RATE_PARENT && core->parent) {
-		struct clk_hw_request *pslot;
-
-		pslot = clk_request_add_affected_clock(req, core->parent);
-		if (IS_ERR(pslot))
-			return pslot;
-	}
-
 	return slot;
 }
 
@@ -846,12 +839,14 @@ void clk_request_put(struct clk_request *req)
 EXPORT_SYMBOL_GPL(clk_request_put);
 
 static int clk_request_check_clk_only(struct clk_request *req,
+				      unsigned int try,
 				      struct clk_hw_request *hw_req)
 {
 	struct clk_hw_request *parent_req;
 	struct clk_core *parent;
 	const struct clk_core *core = hw_req->core;
 	unsigned long long parent_rate;
+	bool restart = false;
 	int ret;
 
 	pr_info("req-%lld: %s: Checking request (rate: %llu).\n",
@@ -863,7 +858,9 @@ static int clk_request_check_clk_only(struct clk_request *req,
 
 	memset(&hw_req->desired, 0, sizeof(hw_req->desired));
 
-	ret = core->ops->check_request(core->hw, hw_req);
+	clk_hw_request_dump(hw_req);
+
+	ret = core->ops->check_request(core->hw, try, hw_req);
 	if (ret) {
 		pr_info("req-%lld: %s: check_request call failed: %d.\n",
 			req->id, core->name, ret);
@@ -871,6 +868,7 @@ static int clk_request_check_clk_only(struct clk_request *req,
 	}
 
 	clk_hw_request_dump(hw_req);
+
 	pr_info("req-%lld: %s: Request OK.\n", req->id, core->name);
 
 	if (!core->num_parents) {
@@ -880,7 +878,7 @@ static int clk_request_check_clk_only(struct clk_request *req,
 		return 0;
 	}
 
-	if (!(hw_req->desired.parent || hw_req->desired.parent_rate)) {
+	if (!hw_req->desired.parent && !hw_req->desired.parent_rate) {
 		pr_info("req-%lld: %s: Parent was unaffected.\n",
 			req->id, core->name);
 		return 0;
@@ -905,19 +903,37 @@ static int clk_request_check_clk_only(struct clk_request *req,
 		return 0;
 	}
 
-	parent_req->requested.rate = hw_req->desired.parent_rate;
+	if (hw_req->desired.parent &&
+	    hw_req->desired.parent != parent_req->requested.parent) {
+		pr_info("req-%lld: %s: Parent changed, restarting.\n",
+			req->id, core->name);
+		restart = true;
+	}
 
-	return -EAGAIN;
+	if (hw_req->desired.parent_rate &&
+	    hw_req->desired.parent_rate != parent_req->requested.rate) {
+		pr_info("req-%lld: %s: Parent rate changed, restarting.\n",
+			req->id, core->name);
+		restart = true;
+	}
+
+	if (restart) {
+		parent_req->requested.rate = hw_req->desired.parent_rate;
+		return -EAGAIN;
+	}
+
+	return 0;
 }
 
 static int clk_request_check_clk(struct clk_request *req,
+				 unsigned int try,
 				 struct clk_hw_request *item)
 {
 	const struct clk_core *core = item->core;
 	struct clk_core *child;
 	int ret;
 
-	ret = clk_request_check_clk_only(req, item);
+	ret = clk_request_check_clk_only(req, try, item);
 	if (ret)
 		return ret;
 
@@ -928,7 +944,7 @@ static int clk_request_check_clk(struct clk_request *req,
 		if (!slot)
 			continue;
 
-		ret = clk_request_check_clk(req, slot);
+		ret = clk_request_check_clk(req, try, slot);
 		if (ret)
 			return ret;
 	}
@@ -936,20 +952,10 @@ static int clk_request_check_clk(struct clk_request *req,
 	return 0;
 }
 
-static int clk_request_check_nolock(struct clk_request *req)
+static int clk_request_check_all(struct clk_request *req,
+				 unsigned int try)
 {
-	unsigned int retries = 8;
 	unsigned int i;
-
-	lockdep_assert_held(&prepare_lock);
-
-again:
-	if (!--retries) {
-		pr_info("req-%lld: No tries left, aborting.\n", req->id);
-		return -EINVAL;
-	}
-
-	pr_info("req-%lld: Checking request (tries left %u)\n", req->id, retries);
 
 	for (i = 0; i < req->affected_clks_num; i++) {
 		struct clk_hw_request *slot = &req->affected_clks[i];
@@ -963,16 +969,44 @@ again:
 			continue;
 		}
 
-		ret = clk_request_check_clk(req, slot);
-		if (ret) {
-			if (ret == -EAGAIN)
-				goto again;
-
+		ret = clk_request_check_clk(req, try, slot);
+		if (ret)
 			return ret;
-		}
 	}
 
 	return 0;
+}
+
+#define CLK_REQUEST_NUM_RETRIES		8
+
+static int clk_request_check_nolock(struct clk_request *req)
+{
+	unsigned int try;
+
+	lockdep_assert_held(&prepare_lock);
+
+	for (try = 0; try < CLK_REQUEST_NUM_RETRIES; try++) {
+		int ret;
+
+		pr_info("req-%lld: Checking request (tries left %u)\n",
+			req->id, CLK_REQUEST_NUM_RETRIES - try);
+
+		ret = clk_request_check_all(req, try);
+		if (ret) {
+			if (ret == -EAGAIN) {
+				continue;
+			}
+
+			pr_info("req-%lld: Request invalid. Returning.\n", req->id);
+			return ret;
+		}
+
+		pr_info("req-%lld: Request valid.\n", req->id);
+		return 0;
+	}
+
+	pr_info("req-%lld: No tries left, aborting.\n", req->id);
+	return -EINVAL;
 }
 
 int clk_request_check(struct clk_request *req)
