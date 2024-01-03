@@ -578,7 +578,8 @@ static bool clk_core_has_parent(struct clk_core *core, const struct clk_core *pa
 #define DEFAULT_AFFECTED_CLK_ENTRIES	8
 
 struct clk_hw_request {
-	struct clk_core *core;
+	const struct clk_request *req;
+	const struct clk_core *core;
 
 	struct {
 		struct clk_core *parent;
@@ -592,14 +593,14 @@ struct clk_hw_request {
 	} desired;
 };
 
-unsigned long long clk_hw_request_get_requested_rate(struct clk_hw_request *req)
+unsigned long long clk_hw_request_get_requested_rate(const struct clk_hw_request *req)
 {
 	return req->requested.rate;
 }
 
-struct clk_hw *clk_hw_request_get_requested_parent(struct clk_hw_request *req)
+struct clk_hw *clk_hw_request_get_requested_parent(const struct clk_hw_request *req)
 {
-	struct clk_core *parent = req->requested.parent;
+	const struct clk_core *parent = req->requested.parent;
 
 	if (!parent)
 		return NULL;
@@ -620,21 +621,40 @@ void clk_hw_request_set_desired_parent_rate(struct clk_hw_request *req,
 }
 
 void clk_hw_request_set_desired_parent(struct clk_hw_request *req,
-				       struct clk_hw *parent)
+				       const struct clk_hw *parent,
+				       unsigned long long rate)
 {
 	req->desired.parent = parent->core;
+	req->desired.parent_rate = rate;
 }
 
 struct clk_request {
 	struct clk_core *prime;
+	s64 id;
 
 	struct clk_hw_request *affected_clks;
 	size_t affected_clks_num;
 	size_t affected_clks_size;
 };
 
+static void clk_hw_request_dump(const struct clk_hw_request *req)
+{
+	pr_info("req-%lld: %s\n", req->req->id, req->core->name);
+
+	pr_info("\tRequested:\n");
+	pr_info("\t\trate: %llu Hz\n", req->requested.rate);
+	if (req->requested.parent)
+		pr_info("\t\tparent %s\n", req->requested.parent->name);
+
+	pr_info("\tDesired:\n");
+	pr_info("\t\trate: %llu Hz\n", req->requested.rate);
+	if (req->desired.parent)
+		pr_info("\t\tparent %s\n", req->desired.parent->name);
+	pr_info("\t\tparent rate: %llu Hz\n", req->desired.parent_rate);
+}
+
 static struct clk_hw_request *
-clk_request_find_slot_by_clk_core(struct clk_request *req, struct clk_core *core)
+clk_request_find_slot_by_clk_core(const struct clk_request *req, const struct clk_core *core)
 {
 	unsigned int i;
 
@@ -648,17 +668,17 @@ clk_request_find_slot_by_clk_core(struct clk_request *req, struct clk_core *core
 	return NULL;
 }
 
-static bool clk_core_is_in_request(struct clk_core *core, struct clk_request *req)
+static bool clk_core_is_in_request(const struct clk_core *core, const struct clk_request *req)
 {
 	return clk_request_find_slot_by_clk_core(req, core) != NULL;
 }
 
-bool clk_hw_is_in_request(struct clk_hw *hw, struct clk_request *req)
+bool clk_hw_is_in_request(const struct clk_hw *hw, const struct clk_request *req)
 {
 	return clk_core_is_in_request(hw->core, req);
 }
 
-static bool clk_request_is_clk_core_top(struct clk_request *req, struct clk_core *core)
+static bool clk_request_is_clk_core_top(const struct clk_request *req, const struct clk_core *core)
 {
 	struct clk_core *parent = core->parent;
 
@@ -682,17 +702,20 @@ clk_request_create_slot(struct clk_request *req, struct clk_core *core)
 {
 	struct clk_hw_request *slot;
 
-	pr_info("Adding %s\n", core->name);
-
 	slot = clk_request_find_slot_by_clk_core(req, core);
 	if (slot) {
-		pr_info("Clock %s is already in the request. Returning its slot.\n",
-			core->name);
+		pr_info("req-%lld: %s: Clock is already part of the request. Returning its slot.\n",
+			req->id, core->name);
 		return slot;
 	}
 
+	pr_info("req-%lld: %s: Creating slot for the new clock.\n",
+		req->id, core->name);
+
 	if (req->affected_clks_num == req->affected_clks_size) {
 		size_t new_size = req->affected_clks_size + DEFAULT_AFFECTED_CLK_ENTRIES;
+
+		pr_crit("req-%lld: No slots available, growing the array to %zu\n", req->id, new_size);
 
 		req->affected_clks = krealloc_array(req->affected_clks,
 						    new_size,
@@ -704,8 +727,11 @@ clk_request_create_slot(struct clk_request *req, struct clk_core *core)
 		req->affected_clks_size = new_size;
 	}
 
-	pr_info("Adding clock %s to slot %zu.\n", core->name, req->affected_clks_num);
+	pr_info("req-%lld: %s: Clock assigned to slot %zu.\n",
+		req->id, core->name, req->affected_clks_num);
+
 	slot = &req->affected_clks[req->affected_clks_num++];
+	slot->req = req;
 	slot->core = core;
 
 	return slot;
@@ -715,7 +741,7 @@ static int clk_request_add_child_clocks(struct clk_request *req, struct clk_core
 {
 	struct clk_core *child;
 
-	pr_info("Adding all childs of %s\n", core->name);
+	pr_info("req-%lld: %s: Adding all children.\n", req->id, core->name);
 
 	hlist_for_each_entry(child, &core->children, child_node) {
 		struct clk_hw_request *slot;
@@ -738,6 +764,8 @@ clk_request_add_affected_clock(struct clk_request *req, struct clk_core *core)
 {
 	struct clk_hw_request *slot;
 	int ret;
+
+	pr_info("req-%lld: %s: Adding clock to request.\n", req->id, core->name);
 
 	slot = clk_request_create_slot(req, core);
 	if (IS_ERR(slot))
@@ -765,17 +793,19 @@ int clk_request_add_clock_rate(struct clk_request *req,
 	struct clk_hw_request *slot;
 	struct clk_core *core = clk->core;
 
-	pr_info("Specifying rate %llu for clock %s\n", rate, __clk_get_name(clk));
-
 	slot = clk_request_add_affected_clock(req, core);
 	if (IS_ERR(slot))
 		return PTR_ERR(slot);
 
 	slot->requested.rate = rate;
 
+	pr_info("req-%lld: %s: Requesting rate %llu\n", req->id, core->name, rate);
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(clk_request_add_clock_rate);
+
+static atomic64_t request_id;
 
 static struct clk_request *
 clk_core_request_get(struct clk_core *core)
@@ -796,6 +826,9 @@ clk_core_request_get(struct clk_core *core)
 	req->affected_clks_size = DEFAULT_AFFECTED_CLK_ENTRIES;
 
 	req->prime = core;
+	req->id = atomic64_inc_return(&request_id);
+
+	pr_info("%s: Allocated request %lld.\n", core->name, req->id);
 
 	return req;
 }
@@ -812,22 +845,82 @@ void clk_request_put(struct clk_request *req)
 }
 EXPORT_SYMBOL_GPL(clk_request_put);
 
+static int clk_request_check_clk_only(struct clk_request *req,
+				      struct clk_hw_request *hw_req)
+{
+	struct clk_hw_request *parent_req;
+	struct clk_core *parent;
+	const struct clk_core *core = hw_req->core;
+	unsigned long long parent_rate;
+	int ret;
+
+	pr_info("req-%lld: %s: Checking request (rate: %llu).\n",
+		req->id, core->name,
+		hw_req->requested.rate);
+
+	if (!core->ops->check_request)
+		return 0;
+
+	memset(&hw_req->desired, 0, sizeof(hw_req->desired));
+
+	ret = core->ops->check_request(core->hw, hw_req);
+	if (ret) {
+		pr_info("req-%lld: %s: check_request call failed: %d.\n",
+			req->id, core->name, ret);
+		return ret;
+	}
+
+	clk_hw_request_dump(hw_req);
+	pr_info("req-%lld: %s: Request OK.\n", req->id, core->name);
+
+	if (!core->num_parents) {
+		WARN_ON(hw_req->desired.parent || hw_req->desired.parent_rate);
+		pr_info("req-%lld: %s: No parents.\n",
+			req->id, core->name);
+		return 0;
+	}
+
+	if (!(hw_req->desired.parent || hw_req->desired.parent_rate)) {
+		pr_info("req-%lld: %s: Parent was unaffected.\n",
+			req->id, core->name);
+		return 0;
+	}
+
+	WARN_ON(hw_req->desired.parent && !hw_req->desired.parent_rate);
+
+	parent = hw_req->desired.parent;
+	if (!parent)
+		parent = core->parent;
+
+	parent_req = clk_request_add_affected_clock(req, parent);
+	if (IS_ERR(parent_req))
+		return PTR_ERR(parent_req);
+
+	parent_rate = clk_core_get_rate_nolock(parent);
+	if (!hw_req->desired.parent_rate ||
+	    hw_req->desired.parent_rate == parent_req->requested.rate ||
+	    hw_req->desired.parent_rate == parent_rate) {
+		pr_info("req-%lld: %s: Parent rate is unchanged, request ok.\n",
+			req->id, core->name);
+		return 0;
+	}
+
+	parent_req->requested.rate = hw_req->desired.parent_rate;
+
+	return -EAGAIN;
+}
+
 static int clk_request_check_clk(struct clk_request *req,
 				 struct clk_hw_request *item)
 {
-	struct clk_core *core = item->core;
+	const struct clk_core *core = item->core;
 	struct clk_core *child;
 	int ret;
 
-	pr_crit("%s +%d\n", __func__, __LINE__);
+	ret = clk_request_check_clk_only(req, item);
+	if (ret)
+		return ret;
 
-	if (core->ops->check_request) {
-		ret = core->ops->check_request(core->hw, item);
-		if (ret)
-			return ret;
-	}
-
-	pr_crit("%s +%d\n", __func__, __LINE__);
 	hlist_for_each_entry(child, &core->children, child_node) {
 		struct clk_hw_request *slot;
 
@@ -845,26 +938,38 @@ static int clk_request_check_clk(struct clk_request *req,
 
 static int clk_request_check_nolock(struct clk_request *req)
 {
+	unsigned int retries = 8;
 	unsigned int i;
 
 	lockdep_assert_held(&prepare_lock);
 
+again:
+	if (!--retries) {
+		pr_info("req-%lld: No tries left, aborting.\n", req->id);
+		return -EINVAL;
+	}
+
+	pr_info("req-%lld: Checking request (tries left %u)\n", req->id, retries);
+
 	for (i = 0; i < req->affected_clks_num; i++) {
 		struct clk_hw_request *slot = &req->affected_clks[i];
-		struct clk_core *core = slot->core;
+		const struct clk_core *core = slot->core;
 		int ret;
 
-		pr_info("Found clock %s in request\n", core->name);
+		pr_info("req-%lld: Found clock %s in request.\n", req->id, core->name);
 
 		if (!clk_request_is_clk_core_top(req, core)) {
-			pr_info("Clock is not a top clock, skipping.\n");
+			pr_info("req-%lld: Clock %s is not a top clock, skipping.\n", req->id, core->name);
 			continue;
 		}
 
-		pr_crit("%s +%d\n", __func__, __LINE__);
 		ret = clk_request_check_clk(req, slot);
-		if (ret)
+		if (ret) {
+			if (ret == -EAGAIN)
+				goto again;
+
 			return ret;
+		}
 	}
 
 	return 0;

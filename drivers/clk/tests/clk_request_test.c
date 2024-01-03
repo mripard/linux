@@ -440,6 +440,8 @@ static void clk_request_test_lone_clock_checked(struct kunit *test)
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
 	KUNIT_ASSERT_EQ(test, clk_request_len(req), 1);
+	KUNIT_ASSERT_TRUE(test, clk_hw_is_in_request(child, req));
+	KUNIT_ASSERT_FALSE(test, clk_hw_is_in_request(parent, req));
 
 	ret = clk_request_check(req);
 	KUNIT_EXPECT_EQ(test, ret, 0);
@@ -480,6 +482,8 @@ static void clk_request_test_lone_clock_change_parent_rate(struct kunit *test)
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
 
+	ret = clk_request_check(req);
+	KUNIT_ASSERT_EQ(test, ret, 0);
 	KUNIT_EXPECT_EQ(test, clk_request_len(req), 2);
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(child, req));
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(parent, req));
@@ -521,12 +525,12 @@ static void clk_request_test_lone_clock_change_parent_rate_checked(struct kunit 
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
-	KUNIT_ASSERT_EQ(test, clk_request_len(req), 2);
 
 	ret = clk_request_check(req);
 	KUNIT_EXPECT_EQ(test, ret, 0);
-	KUNIT_EXPECT_EQ(test, parent_ctx->check_called, 1);
-	KUNIT_EXPECT_EQ(test, child_ctx->check_called, 1);
+	KUNIT_EXPECT_EQ(test, clk_request_len(req), 2);
+	KUNIT_EXPECT_GE(test, parent_ctx->check_called, 1);
+	KUNIT_EXPECT_GE(test, child_ctx->check_called, 1);
 }
 
 /*

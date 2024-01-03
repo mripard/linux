@@ -1345,15 +1345,16 @@ void clk_hw_get_rate_range(struct clk_hw *hw, unsigned long *min_rate,
 void clk_hw_set_rate_range(struct clk_hw *hw, unsigned long min_rate,
 			   unsigned long max_rate);
 
-bool clk_hw_is_in_request(struct clk_hw *hw, struct clk_request *req);
-unsigned long long clk_hw_request_get_requested_rate(struct clk_hw_request *req);
-struct clk_hw *clk_hw_request_get_requested_parent(struct clk_hw_request *req);
+bool clk_hw_is_in_request(const struct clk_hw *hw, const struct clk_request *req);
+unsigned long long clk_hw_request_get_requested_rate(const struct clk_hw_request *req);
+struct clk_hw *clk_hw_request_get_requested_parent(const struct clk_hw_request *req);
 void clk_hw_request_set_desired_rate(struct clk_hw_request *req,
 				     unsigned long long rate);
 void clk_hw_request_set_desired_parent_rate(struct clk_hw_request *req,
 					    unsigned long long rate);
 void clk_hw_request_set_desired_parent(struct clk_hw_request *req,
-				       struct clk_hw *parent);
+				       const struct clk_hw *parent,
+				       unsigned long long rate);
 
 static inline void __clk_hw_set_clk(struct clk_hw *dst, struct clk_hw *src)
 {
