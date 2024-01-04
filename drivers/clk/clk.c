@@ -639,7 +639,6 @@ void clk_hw_request_set_desired_parent(struct clk_hw_request *req,
 }
 
 struct clk_request {
-	struct clk_core *prime;
 	s64 id;
 
 	struct clk_hw_request *affected_clks;
@@ -833,7 +832,6 @@ clk_core_request_get(struct clk_core *core)
 	}
 	req->affected_clks_size = DEFAULT_AFFECTED_CLK_ENTRIES;
 
-	req->prime = core;
 	req->id = atomic64_inc_return(&request_id);
 
 	pr_info("%s: Allocated request %lld.\n", core->name, req->id);
