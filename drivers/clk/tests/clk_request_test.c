@@ -1213,6 +1213,96 @@ static void clk_request_test_reparent_set_rate(struct kunit *test)
 	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom_right, req));
 }
 
+/*
+ * Test that if the clock that was the trigger of the request wants to
+ * change its parent, the old clocks that were there by side effect (its
+ * old parent, its old siblings) will no longer be part of the request,
+ * and its new parent and siblings will be.
+ */
+static void clk_request_test_reparent_3_parents(struct kunit *test)
+{
+	struct clk_hw *top_left, *top_center, *top_right;
+	struct clk_hw *bottom_left, *bottom_center, *bottom_right;
+	struct clk_dummy_context *top_right_ctx;
+	struct clk_mux_context *bottom_center_ctx;
+	struct clk_div_context *bottom_right_ctx;
+	const struct clk_hw *parents[3];
+	struct clk_request *req;
+	struct clk *clk;
+	int ret;
+
+	top_left = clk_test_create_dummy(test,
+					 "top-left",
+					 0,
+					 DUMMY_CLOCK_RATE_1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, top_left);
+
+	top_center = clk_test_create_dummy(test,
+					   "top-center",
+					   0,
+					   DUMMY_CLOCK_RATE_1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, top_center);
+
+	top_right = clk_test_create_dummy(test,
+					  "top-right",
+					  0,
+					  DUMMY_CLOCK_RATE_2);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, top_right);
+	top_right_ctx = hw_to_dummy(top_right);
+
+	bottom_left = clk_test_create_dummy_div(test,
+						top_left,
+						"bottom-left",
+						0,
+						1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_left);
+
+	parents[0] = top_left;
+	parents[1] = top_center;
+	parents[2] = top_right;
+	bottom_center = clk_test_create_mux_with_ops(test,
+						     parents, ARRAY_SIZE(parents),
+						     &clk_multiple_parents_mux_ops_iterate_parent,
+						     "bottom-center",
+						     0,
+						     0);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_center);
+	bottom_center_ctx = hw_to_mux(bottom_center);
+
+	bottom_right = clk_test_create_dummy_div(test,
+						 top_right,
+						 "bottom-right",
+						 0,
+						 1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_right);
+	bottom_right_ctx = hw_to_div(bottom_right);
+
+	clk = clk_hw_get_clk(bottom_center, NULL);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
+
+	req = clk_request_get(clk);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
+
+	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+
+	ret = clk_request_add_clock_rate(req, clk, 144000000);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+
+	ret = clk_request_check(req);
+	KUNIT_EXPECT_EQ(test, ret, 0);
+	KUNIT_EXPECT_EQ(test, clk_request_len(req), 3);
+	KUNIT_EXPECT_FALSE(test, clk_hw_is_in_request(top_left, req));
+	KUNIT_EXPECT_FALSE(test, clk_hw_is_in_request(top_center, req));
+	KUNIT_EXPECT_FALSE(test, clk_hw_is_in_request(bottom_left, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(top_right, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom_center, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom_right, req));
+	KUNIT_EXPECT_GE(test, top_right_ctx->check_called, 1);
+	KUNIT_EXPECT_GE(test, bottom_center_ctx->check_called, 1);
+	KUNIT_EXPECT_GE(test, bottom_right_ctx->check_called, 1);
+}
+
 static void clk_request_test_12(struct kunit *test)
 {
 	/*
@@ -1252,6 +1342,7 @@ static struct kunit_case clk_request_test_cases[] = {
 	KUNIT_CASE(clk_request_test_parent_clock),
 	KUNIT_CASE(clk_request_test_parent_clock_3_levels),
 	KUNIT_CASE(clk_request_test_reparent),
+	KUNIT_CASE(clk_request_test_reparent_3_parents),
 	KUNIT_CASE(clk_request_test_reparent_set_rate),
 	KUNIT_CASE(clk_request_test_siblings_clocks_set_rate),
 	KUNIT_CASE(clk_request_test_siblings_3_levels_set_rate_all_levels),
