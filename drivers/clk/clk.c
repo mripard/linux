@@ -708,15 +708,15 @@ unsigned int clk_request_len(struct clk_request *req)
 EXPORT_SYMBOL_GPL(clk_request_len);
 
 static struct clk_hw_request *
-clk_request_create_slot(struct clk_request *req, struct clk_core *core)
+clk_request_allocate_hw_request(struct clk_request *req, const struct clk_core *core)
 {
-	struct clk_hw_request *slot;
+	struct clk_hw_request *hw_req;
 
-	slot = clk_request_find_slot_by_clk_core(req, core);
-	if (slot) {
+	hw_req = clk_request_find_slot_by_clk_core(req, core);
+	if (hw_req) {
 		pr_info("req-%lld: %s: Clock is already part of the request. Returning its slot.\n",
 			req->id, core->name);
-		return slot;
+		return hw_req;
 	}
 
 	pr_info("req-%lld: %s: Creating slot for the new clock.\n",
@@ -740,11 +740,11 @@ clk_request_create_slot(struct clk_request *req, struct clk_core *core)
 	pr_info("req-%lld: %s: Clock assigned to slot %zu.\n",
 		req->id, core->name, req->affected_clks_num);
 
-	slot = &req->affected_clks[req->affected_clks_num++];
-	slot->req = req;
-	slot->core = core;
+	hw_req = &req->affected_clks[req->affected_clks_num++];
+	hw_req->req = req;
+	hw_req->core = core;
 
-	return slot;
+	return hw_req;
 }
 
 static int clk_request_add_child_clocks(struct clk_request *req, struct clk_core *core)
