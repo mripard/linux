@@ -788,22 +788,28 @@ clk_request_add_affected_clock(struct clk_request *req, const struct clk_core *c
 	return hw_req;
 }
 
-int clk_request_add_clock_rate(struct clk_request *req,
-			       struct clk *clk,
-			       unsigned long long rate)
+static int __clk_request_add_clock_rate(struct clk_request *req,
+					const struct clk_core *core,
+					unsigned long long rate)
 {
-	struct clk_hw_request *slot;
-	struct clk_core *core = clk->core;
+	struct clk_hw_request *hw_req;
 
-	slot = clk_request_add_affected_clock(req, core);
-	if (IS_ERR(slot))
-		return PTR_ERR(slot);
+	hw_req = clk_request_add_affected_clock(req, core);
+	if (IS_ERR(hw_req))
+		return PTR_ERR(hw_req);
 
-	slot->requested.rate = rate;
+	hw_req->requested.rate = rate;
 
 	pr_info("req-%lld: %s: Requesting rate %llu\n", req->id, core->name, rate);
 
 	return 0;
+}
+
+int clk_request_add_clock_rate(struct clk_request *req,
+			       struct clk *clk,
+			       unsigned long long rate)
+{
+	return __clk_request_add_clock_rate(req, clk->core, rate);
 }
 EXPORT_SYMBOL_GPL(clk_request_add_clock_rate);
 
