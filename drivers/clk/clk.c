@@ -747,7 +747,7 @@ clk_request_allocate_hw_request(struct clk_request *req, const struct clk_core *
 	return hw_req;
 }
 
-static int clk_request_add_child_clocks(struct clk_request *req, struct clk_core *core)
+static int clk_request_add_child_clocks(struct clk_request *req, const struct clk_core *core)
 {
 	struct clk_core *child;
 
@@ -757,7 +757,7 @@ static int clk_request_add_child_clocks(struct clk_request *req, struct clk_core
 		struct clk_hw_request *slot;
 		int ret;
 
-		slot = clk_request_create_slot(req, child);
+		slot = clk_request_allocate_hw_request(req, child);
 		if (IS_ERR(slot))
 			return PTR_ERR(slot);
 
@@ -770,22 +770,22 @@ static int clk_request_add_child_clocks(struct clk_request *req, struct clk_core
 }
 
 static struct clk_hw_request *
-clk_request_add_affected_clock(struct clk_request *req, struct clk_core *core)
+clk_request_add_affected_clock(struct clk_request *req, const struct clk_core *core)
 {
-	struct clk_hw_request *slot;
+	struct clk_hw_request *hw_req;
 	int ret;
 
 	pr_info("req-%lld: %s: Adding clock to request.\n", req->id, core->name);
 
-	slot = clk_request_create_slot(req, core);
-	if (IS_ERR(slot))
-		return slot;
+	hw_req = clk_request_allocate_hw_request(req, core);
+	if (IS_ERR(hw_req))
+		return hw_req;
 
 	ret = clk_request_add_child_clocks(req, core);
 	if (ret)
 		return ERR_PTR(ret);
 
-	return slot;
+	return hw_req;
 }
 
 int clk_request_add_clock_rate(struct clk_request *req,
