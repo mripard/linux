@@ -788,6 +788,23 @@ clk_request_add_affected_clock(struct clk_request *req, const struct clk_core *c
 	return hw_req;
 }
 
+static int __clk_request_add_clock_parent(struct clk_request *req,
+					  const struct clk_core *core,
+					  const struct clk_core *parent)
+{
+	struct clk_hw_request *hw_req;
+
+	hw_req = clk_request_add_affected_clock(req, core);
+	if (IS_ERR(hw_req))
+		return PTR_ERR(hw_req);
+
+	hw_req->requested.parent = parent;
+
+	pr_info("req-%lld: %s: Requesting parent %s\n", req->id, core->name, parent->name);
+
+	return 0;
+}
+
 static int __clk_request_add_clock_rate(struct clk_request *req,
 					const struct clk_core *core,
 					unsigned long long rate)
@@ -857,10 +874,8 @@ static int clk_request_check_clk_only(struct clk_request *req,
 				      unsigned int try,
 				      struct clk_hw_request *hw_req)
 {
-	struct clk_hw_request *parent_req;
-	struct clk_core *parent;
 	const struct clk_core *core = hw_req->core;
-	unsigned long long parent_rate;
+	struct clk_core *child;
 	bool restart = false;
 	int ret;
 
@@ -886,56 +901,32 @@ static int clk_request_check_clk_only(struct clk_request *req,
 
 	pr_info("req-%lld: %s: Request OK.\n", req->id, core->name);
 
-	if (!core->num_parents) {
-		WARN_ON(hw_req->desired.parent || hw_req->desired.parent_rate);
-		pr_info("req-%lld: %s: No parents.\n",
+	if (hw_req->desired.parent_set) {
+		ret = __clk_request_add_clock_parent(req, core, hw_req->desired.parent);
+		if (ret)
+			return ret;
+
+		pr_info("req-%lld: %s: Parent changed, adding clock to request and restarting.\n",
 			req->id, core->name);
-		return 0;
-	}
 
-	if (!hw_req->desired.parent && !hw_req->desired.parent_rate) {
-		pr_info("req-%lld: %s: Parent was unaffected.\n",
-			req->id, core->name);
-		return 0;
-	}
-
-	WARN_ON(hw_req->desired.parent && !hw_req->desired.parent_rate);
-
-	parent = hw_req->desired.parent;
-	if (!parent)
-		parent = core->parent;
-
-	parent_req = clk_request_add_affected_clock(req, parent);
-	if (IS_ERR(parent_req))
-		return PTR_ERR(parent_req);
-
-	parent_rate = clk_core_get_rate_nolock(parent);
-	if (!hw_req->desired.parent_rate ||
-	    hw_req->desired.parent_rate == parent_req->requested.rate ||
-	    hw_req->desired.parent_rate == parent_rate) {
-		pr_info("req-%lld: %s: Parent rate is unchanged, request ok.\n",
-			req->id, core->name);
-		return 0;
-	}
-
-	if (hw_req->desired.parent &&
-	    hw_req->desired.parent != parent_req->requested.parent) {
-		pr_info("req-%lld: %s: Parent changed, restarting.\n",
-			req->id, core->name);
 		restart = true;
 	}
 
-	if (hw_req->desired.parent_rate &&
-	    hw_req->desired.parent_rate != parent_req->requested.rate) {
-		pr_info("req-%lld: %s: Parent rate changed, restarting.\n",
-			req->id, core->name);
+	if (hw_req->desired.parent_rate_set) {
+		struct clk_core *parent = core->parent;
+
+		if (hw_req->desired.parent_set)
+			parent = hw_req->desired.parent;
+
+		ret = __clk_request_add_clock_rate(req, parent, hw_req->desired.parent_rate);
+		if (ret)
+			return ret;
+
 		restart = true;
 	}
 
-	if (restart) {
-		parent_req->requested.rate = hw_req->desired.parent_rate;
+	if (restart)
 		return -EAGAIN;
-	}
 
 	return 0;
 }
