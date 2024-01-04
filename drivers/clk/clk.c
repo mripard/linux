@@ -587,8 +587,13 @@ struct clk_hw_request {
 	} requested;
 
 	struct {
+		bool parent_set;
 		struct clk_core *parent;
+
+		bool parent_rate_set;
 		unsigned long long parent_rate;
+
+		bool rate_set;
 		unsigned long long rate;
 	} desired;
 };
@@ -612,12 +617,14 @@ void clk_hw_request_set_desired_rate(struct clk_hw_request *req,
 				     unsigned long long rate)
 {
 	req->desired.rate = rate;
+	req->desired.rate_set = true;
 }
 
 void clk_hw_request_set_desired_parent_rate(struct clk_hw_request *req,
 					    unsigned long long rate)
 {
 	req->desired.parent_rate = rate;
+	req->desired.parent_rate_set = true;
 }
 
 void clk_hw_request_set_desired_parent(struct clk_hw_request *req,
@@ -626,7 +633,9 @@ void clk_hw_request_set_desired_parent(struct clk_hw_request *req,
 {
 	pr_crit("%s +%d %s %llu \n", __func__, __LINE__, parent->core->name, rate);
 	req->desired.parent = parent->core;
+	req->desired.parent_set = true;
 	req->desired.parent_rate = rate;
+	req->desired.parent_rate_set = true;
 }
 
 struct clk_request {
