@@ -575,18 +575,14 @@ static bool clk_core_has_parent(struct clk_core *core, const struct clk_core *pa
 	return false;
 }
 
+#define DEFAULT_AFFECTED_CLK_ENTRIES	8
+
 struct clk_hw_request {
-	struct list_head node;
-	struct list_head child_node;
-	struct list_head children;
 	const struct clk_request *req;
 	const struct clk_core *core;
 
 	struct {
-		bool parent_set;
-		const struct clk_core *parent;
-
-		bool rate_set;
+		struct clk_core *parent;
 		unsigned long long rate;
 	} requested;
 
@@ -601,64 +597,6 @@ struct clk_hw_request {
 		unsigned long long rate;
 	} desired;
 };
-
-struct clk_hw_requests {
-	struct list_head requests;
-};
-
-struct clk_request_item {
-	struct list_head node;
-	const struct clk_core *core;
-
-	struct {
-		bool set;
-		unsigned long long value;
-	} rate;
-
-	struct {
-		bool set;
-		struct clk_core *core;
-	} parent;
-};
-
-struct clk_request {
-	s64 id;
-
-	struct list_head items;
-	struct clk_hw_requests *hw_reqs;
-};
-
-static struct clk_hw_request *clk_hw_request_create(const struct clk_request *req,
-						    const struct clk_core *core)
-{
-	struct clk_hw_request *hw_req;
-
-	hw_req = kzalloc(sizeof(*hw_req), GFP_KERNEL);
-	if (!hw_req)
-		return ERR_PTR(-ENOMEM);
-
-	INIT_LIST_HEAD(&hw_req->children);
-	hw_req->req = req;
-	hw_req->core = core;
-
-	pr_crit("%s +%d Created request %px (req %llu, core %s)\n", __func__, __LINE__, hw_req, req->id, core->name);
-
-	return hw_req;
-}
-
-static void clk_hw_request_set_requested_rate(struct clk_hw_request *req,
-					      unsigned long long rate)
-{
-	req->requested.rate = rate;
-	req->requested.rate_set = true;
-}
-
-static void clk_hw_request_set_requested_parent(struct clk_hw_request *req,
-						const struct clk_core *parent)
-{
-	req->requested.parent = parent;
-	req->requested.parent_set = true;
-}
 
 unsigned long long clk_hw_request_get_requested_rate(const struct clk_hw_request *req)
 {
@@ -700,137 +638,13 @@ void clk_hw_request_set_desired_parent(struct clk_hw_request *req,
 	req->desired.parent_rate_set = true;
 }
 
-static struct clk_hw_request *
-clk_hw_request_affects_clk_core(struct clk_hw_request *hw_req,
-				const struct clk_core *core)
-{
-	struct clk_hw_request *child_hw_req;
+struct clk_request {
+	s64 id;
 
-	if (!hw_req)
-		return NULL;
-
-	pr_crit("%s +%d %px\n", __func__, __LINE__, core);
-	pr_crit("%s +%d %px\n", __func__, __LINE__, hw_req);
-	if (hw_req->core == core)
-		return hw_req;
-
-	pr_crit("%s +%d\n", __func__, __LINE__);
-	list_for_each_entry(child_hw_req, &hw_req->children, child_node) {
-		struct clk_hw_request *found;
-
-		pr_crit("%s +%d\n", __func__, __LINE__);
-		found = clk_hw_request_affects_clk_core(child_hw_req, core);
-		if (found)
-			return found;
-	}
-
-	pr_crit("%s +%d\n", __func__, __LINE__);
-	return NULL;
-}
-
-static struct clk_hw_request *
-clk_hw_requests_find(const struct clk_hw_requests *hw_reqs,
-		     const struct clk_core *core)
-{
-	struct clk_hw_request *hw_req;
-
-	pr_crit("%s +%d %px\n", __func__, __LINE__, core);
-	pr_crit("%s +%d %px\n", __func__, __LINE__, hw_reqs);
-
-
-	list_for_each_entry(hw_req, &hw_reqs->requests, node) {
-		struct clk_hw_request *found;
-
-		pr_crit("%s +%d %px\n", __func__, __LINE__, hw_req);
-		found = clk_hw_request_affects_clk_core(hw_req, core);
-		if (found)
-			return found;
-		pr_crit("%s +%d\n", __func__, __LINE__);
-	}
-
-	pr_crit("%s +%d\n", __func__, __LINE__);
-	return NULL;
-}
-
-static struct clk_hw_request *
-clk_hw_request_build_one(const struct clk_request *req, const struct clk_core *core)
-{
-	struct clk_hw_request *hw_req;
-	struct clk_core *child;
-
-	pr_crit("%s +%d\n", __func__, __LINE__);
-	hw_req = clk_hw_request_create(req, core);
-	if (IS_ERR(hw_req))
-		return hw_req;
-
-	pr_crit("%s +%d\n", __func__, __LINE__);
-	hlist_for_each_entry(child, &core->children, child_node) {
-		struct clk_hw_request *child_hw_req;
-
-		pr_crit("%s +%d\n", __func__, __LINE__);
-		if (child->parent != core)
-			continue;
-
-		pr_crit("%s +%d\n", __func__, __LINE__);
-		child_hw_req = clk_hw_request_build_one(req, child);
-		if (IS_ERR(child_hw_req))
-			return child_hw_req;
-
-		pr_crit("%s +%d Adding %px to %s children\n", __func__, __LINE__, child_hw_req, hw_req->core->name);
-		list_add_tail(&child_hw_req->child_node, &hw_req->children);
-	}
-
-	pr_crit("%s +%d %zu\n", __func__, __LINE__, list_count_nodes(&hw_req->children));
-	return hw_req;
-}
-
-static struct clk_hw_request *
-clk_hw_requests_find_request_or_alloc(const struct clk_request *req,
-				      const struct clk_hw_requests *hw_reqs,
-				      const struct clk_core *core)
-{
-	struct clk_hw_request *hw_req;
-
-	pr_crit("%s +%d\n", __func__, __LINE__);
-	hw_req = clk_hw_requests_find(hw_reqs, core);
-	if (hw_req)
-		return hw_req;
-
-	pr_crit("%s +%d\n", __func__, __LINE__);
-	return clk_hw_request_build_one(req, core);
-}
-
-static int clk_hw_requests_build_from_request(struct clk_hw_requests *hw_reqs,
-					      const struct clk_request *req)
-{
-	struct clk_request_item *item;
-
-	pr_crit("%s +%d\n", __func__, __LINE__);
-
-	list_for_each_entry(item, &req->items, node) {
-		struct clk_hw_request *hw_req;
-
-		pr_crit("%s +%d\n", __func__, __LINE__);
-		hw_req = clk_hw_requests_find_request_or_alloc(req, hw_reqs, item->core);
-		if (IS_ERR(hw_req))
-			return PTR_ERR(hw_req);
-
-		pr_crit("%s +%d\n", __func__, __LINE__);
-		if (item->rate.set)
-			clk_hw_request_set_requested_rate(hw_req, item->rate.value);
-
-		pr_crit("%s +%d\n", __func__, __LINE__);
-		if (item->parent.set)
-			clk_hw_request_set_requested_parent(hw_req, item->parent.core);
-
-		pr_crit("%s +%d\n", __func__, __LINE__);
-		list_add_tail(&hw_req->node, &hw_reqs->requests);
-		pr_crit("%s +%d\n", __func__, __LINE__);
-	}
-
-	pr_crit("%s +%d\n", __func__, __LINE__);
-	return 0;
-}
+	struct clk_hw_request *affected_clks;
+	size_t affected_clks_num;
+	size_t affected_clks_size;
+};
 
 static void clk_hw_request_dump(const struct clk_hw_request *req)
 {
@@ -848,35 +662,24 @@ static void clk_hw_request_dump(const struct clk_hw_request *req)
 	pr_info("\t\tparent rate: %llu Hz\n", req->desired.parent_rate);
 }
 
-static struct clk_request_item *
-clk_request_find_item_by_clk_core(const struct clk_request *req, const struct clk_core *core)
+static struct clk_hw_request *
+clk_request_find_slot_by_clk_core(const struct clk_request *req, const struct clk_core *core)
 {
-	struct clk_request_item *item;
+	unsigned int i;
 
-	list_for_each_entry(item, &req->items, node)
-		if (item->core == core)
-			return item;
+	for (i = 0; i < req->affected_clks_num; i++) {
+		struct clk_hw_request *slot = &req->affected_clks[i];
+
+		if (slot->core == core)
+			return slot;
+	}
 
 	return NULL;
 }
 
 static bool clk_core_is_in_request(const struct clk_core *core, const struct clk_request *req)
 {
-	struct clk_request_item *item;
-	struct clk_hw_request *hw_req;
-
-	pr_crit("%s +%d\n", __func__, __LINE__);
-	item = clk_request_find_item_by_clk_core(req, core);
-	if (item)
-		return true;
-
-	pr_crit("%s +%d\n", __func__, __LINE__);
-	if (req->hw_reqs)
-		list_for_each_entry(hw_req, &req->hw_reqs->requests, node)
-			if (clk_hw_request_affects_clk_core(hw_req, core))
-				return true;
-
-	return false;
+	return clk_request_find_slot_by_clk_core(req, core) != NULL;
 }
 
 bool clk_hw_is_in_request(const struct clk_hw *hw, const struct clk_request *req)
@@ -884,136 +687,117 @@ bool clk_hw_is_in_request(const struct clk_hw *hw, const struct clk_request *req
 	return clk_core_is_in_request(hw->core, req);
 }
 
-/* static bool clk_request_is_clk_core_top(const struct clk_request *req, const struct clk_core *core) */
-/* { */
-/* 	struct clk_core *parent = core->parent; */
-
-/* 	if (!parent) */
-/* 		return true; */
-
-/* 	if (!clk_core_is_in_request(parent, req)) */
-/* 	    return true; */
-
-/* 	return false; */
-/* } */
-
-static unsigned int clk_hw_request_count_affected_clocks(const struct clk_hw_request *hw_req)
+static bool clk_request_is_clk_core_top(const struct clk_request *req, const struct clk_core *core)
 {
-	const struct clk_hw_request *child_hw_req;
-	unsigned int count;
+	struct clk_core *parent = core->parent;
 
-	pr_crit("%s +%d\n", __func__, __LINE__);
-	if (!hw_req)
-		return 0;
+	if (!parent)
+		return true;
 
-	pr_crit("%s +%d %s\n", __func__, __LINE__, hw_req->core->name);
-	count = 1;
+	if (!clk_core_is_in_request(parent, req))
+	    return true;
 
-	list_for_each_entry(child_hw_req, &hw_req->children, child_node) {
-		pr_crit("%s +%d\n", __func__, __LINE__);
-		count += clk_hw_request_count_affected_clocks(child_hw_req);
-	}
-
-	return count;
+	return false;
 }
 
 unsigned int clk_request_len(struct clk_request *req)
 {
-	struct clk_hw_request *hw_req;
-	unsigned int count;
-
-	if (!req->hw_reqs)
-		return list_count_nodes(&req->items);
-
-	count = 0;
-	list_for_each_entry(hw_req, &req->hw_reqs->requests, node) {
-		pr_crit("%s +%d\n", __func__, __LINE__);
-		count += clk_hw_request_count_affected_clocks(hw_req);
-	}
-
-	return count;
+	return req->affected_clks_num;
 }
 EXPORT_SYMBOL_GPL(clk_request_len);
 
-static struct clk_request_item *
-clk_request_allocate_item(struct clk_request *req, const struct clk_core *core)
+static struct clk_hw_request *
+clk_request_allocate_hw_request(struct clk_request *req, const struct clk_core *core)
 {
-	struct clk_request_item *item;
+	struct clk_hw_request *hw_req;
 
-	item = clk_request_find_item_by_clk_core(req, core);
-	if (item) {
-		pr_info("req-%lld: %s: Clock is already part of the request. Returning its item.\n",
+	hw_req = clk_request_find_slot_by_clk_core(req, core);
+	if (hw_req) {
+		pr_info("req-%lld: %s: Clock is already part of the request. Returning its slot.\n",
 			req->id, core->name);
-		return item;
+		return hw_req;
 	}
 
-	pr_info("req-%lld: %s: Creating new item for the clock.\n",
+	pr_info("req-%lld: %s: Creating slot for the new clock.\n",
 		req->id, core->name);
 
-	item = kzalloc(sizeof(*item), GFP_KERNEL);
-	if (!item)
-		return ERR_PTR(-ENOMEM);
+	if (req->affected_clks_num == req->affected_clks_size) {
+		size_t new_size = req->affected_clks_size + DEFAULT_AFFECTED_CLK_ENTRIES;
 
-	item->core = core;
+		pr_crit("req-%lld: No slots available, growing the array to %zu\n", req->id, new_size);
 
-	list_add_tail(&item->node, &req->items);
+		req->affected_clks = krealloc_array(req->affected_clks,
+						    new_size,
+						    sizeof(*req->affected_clks),
+						    GFP_KERNEL);
+		if (!req->affected_clks)
+			return ERR_PTR(-ENOMEM);
 
-	return item;
+		req->affected_clks_size = new_size;
+	}
+
+	pr_info("req-%lld: %s: Clock assigned to slot %zu.\n",
+		req->id, core->name, req->affected_clks_num);
+
+	hw_req = &req->affected_clks[req->affected_clks_num++];
+	hw_req->req = req;
+	hw_req->core = core;
+
+	return hw_req;
 }
 
-/* static int clk_request_add_child_clocks(struct clk_request *req, const struct clk_core *core) */
-/* { */
-/* 	struct clk_core *child; */
+static int clk_request_add_child_clocks(struct clk_request *req, const struct clk_core *core)
+{
+	struct clk_core *child;
 
-/* 	pr_info("req-%lld: %s: Adding all children.\n", req->id, core->name); */
+	pr_info("req-%lld: %s: Adding all children.\n", req->id, core->name);
 
-/* 	hlist_for_each_entry(child, &core->children, child_node) { */
-/* 		struct clk_hw_request *slot; */
-/* 		int ret; */
+	hlist_for_each_entry(child, &core->children, child_node) {
+		struct clk_hw_request *slot;
+		int ret;
 
-/* 		slot = clk_request_allocate_hw_request(req, child); */
-/* 		if (IS_ERR(slot)) */
-/* 			return PTR_ERR(slot); */
+		slot = clk_request_allocate_hw_request(req, child);
+		if (IS_ERR(slot))
+			return PTR_ERR(slot);
 
-/* 		ret = clk_request_add_child_clocks(req, child); */
-/* 		if (ret) */
-/* 			return ret; */
-/* 	} */
+		ret = clk_request_add_child_clocks(req, child);
+		if (ret)
+			return ret;
+	}
 
-/* 	return 0; */
-/* } */
+	return 0;
+}
 
-/* static struct clk_hw_request * */
-/* clk_request_add_affected_clock(struct clk_request *req, const struct clk_core *core) */
-/* { */
-/* 	struct clk_hw_request *hw_req; */
-/* 	int ret; */
+static struct clk_hw_request *
+clk_request_add_affected_clock(struct clk_request *req, const struct clk_core *core)
+{
+	struct clk_hw_request *hw_req;
+	int ret;
 
-/* 	pr_info("req-%lld: %s: Adding clock to request.\n", req->id, core->name); */
+	pr_info("req-%lld: %s: Adding clock to request.\n", req->id, core->name);
 
-/* 	hw_req = clk_request_allocate_hw_request(req, core); */
-/* 	if (IS_ERR(hw_req)) */
-/* 		return hw_req; */
+	hw_req = clk_request_allocate_hw_request(req, core);
+	if (IS_ERR(hw_req))
+		return hw_req;
 
-/* 	ret = clk_request_add_child_clocks(req, core); */
-/* 	if (ret) */
-/* 		return ERR_PTR(ret); */
+	ret = clk_request_add_child_clocks(req, core);
+	if (ret)
+		return ERR_PTR(ret);
 
-/* 	return hw_req; */
-/* } */
+	return hw_req;
+}
 
 static int __clk_request_add_clock_rate(struct clk_request *req,
 					const struct clk_core *core,
 					unsigned long long rate)
 {
-	struct clk_request_item *item;
+	struct clk_hw_request *hw_req;
 
-	item = clk_request_allocate_item(req, core);
-	if (IS_ERR(item))
-		return PTR_ERR(item);
+	hw_req = clk_request_add_affected_clock(req, core);
+	if (IS_ERR(hw_req))
+		return PTR_ERR(hw_req);
 
-	item->rate.set = true;
-	item->rate.value = rate;
+	hw_req->requested.rate = rate;
 
 	pr_info("req-%lld: %s: Requesting rate %llu\n", req->id, core->name, rate);
 
@@ -1039,8 +823,16 @@ clk_core_request_get(struct clk_core *core)
 	if (!req)
 		return ERR_PTR(-ENOMEM);
 
+	req->affected_clks = kmalloc_array(DEFAULT_AFFECTED_CLK_ENTRIES,
+					   sizeof(*req->affected_clks),
+					   GFP_KERNEL);
+	if (!req->affected_clks) {
+		kfree(req);
+		return ERR_PTR(-ENOMEM);
+	}
+	req->affected_clks_size = DEFAULT_AFFECTED_CLK_ENTRIES;
+
 	req->id = atomic64_inc_return(&request_id);
-	INIT_LIST_HEAD(&req->items);
 
 	pr_info("%s: Allocated request %lld.\n", core->name, req->id);
 
@@ -1060,14 +852,13 @@ void clk_request_put(struct clk_request *req)
 EXPORT_SYMBOL_GPL(clk_request_put);
 
 static int clk_request_check_clk_only(struct clk_request *req,
-				      struct clk_hw_requests *hw_reqs,
-				      struct clk_hw_request *hw_req,
-				      unsigned int try)
+				      unsigned int try,
+				      struct clk_hw_request *hw_req)
 {
-	const struct clk_core *core = hw_req->core;
 	struct clk_hw_request *parent_req;
-	/* unsigned long long parent_rate; */
 	struct clk_core *parent;
+	const struct clk_core *core = hw_req->core;
+	unsigned long long parent_rate;
 	bool restart = false;
 	int ret;
 
@@ -1100,72 +891,73 @@ static int clk_request_check_clk_only(struct clk_request *req,
 		return 0;
 	}
 
-	if (!hw_req->desired.parent_set && !hw_req->desired.parent_rate_set) {
+	if (!hw_req->desired.parent && !hw_req->desired.parent_rate) {
 		pr_info("req-%lld: %s: Parent was unaffected.\n",
 			req->id, core->name);
 		return 0;
 	}
 
-	/* WARN_ON(hw_req->desired.parent && !hw_req->desired.parent_rate); */
+	WARN_ON(hw_req->desired.parent && !hw_req->desired.parent_rate);
 
-	parent = core->parent;
-	if (hw_req->desired.parent_set)
-		parent = hw_req->desired.parent;
+	parent = hw_req->desired.parent;
+	if (!parent)
+		parent = core->parent;
 
-	parent_req = clk_hw_requests_find_request_or_alloc(req, req->hw_reqs, parent);
+	parent_req = clk_request_add_affected_clock(req, parent);
+	if (IS_ERR(parent_req))
+		return PTR_ERR(parent_req);
 
-	/* parent_req = clk_request_add_affected_clock(req, parent); */
-	/* if (IS_ERR(parent_req)) */
-	/* 	return PTR_ERR(parent_req); */
+	parent_rate = clk_core_get_rate_nolock(parent);
+	if (!hw_req->desired.parent_rate ||
+	    hw_req->desired.parent_rate == parent_req->requested.rate ||
+	    hw_req->desired.parent_rate == parent_rate) {
+		pr_info("req-%lld: %s: Parent rate is unchanged, request ok.\n",
+			req->id, core->name);
+		return 0;
+	}
 
-	/* parent_rate = clk_core_get_rate_nolock(parent); */
-	/* if (!hw_req->desired.parent_rate || */
-	/*     hw_req->desired.parent_rate == parent_req->requested.rate || */
-	/*     hw_req->desired.parent_rate == parent_rate) { */
-	/* 	pr_info("req-%lld: %s: Parent rate is unchanged, request ok.\n", */
-	/* 		req->id, core->name); */
-	/* 	return 0; */
-	/* } */
+	if (hw_req->desired.parent &&
+	    hw_req->desired.parent != parent_req->requested.parent) {
+		pr_info("req-%lld: %s: Parent changed, restarting.\n",
+			req->id, core->name);
+		restart = true;
+	}
 
-	/* if (hw_req->desired.parent && */
-	/*     hw_req->desired.parent != parent_req->requested.parent) { */
-	/* 	pr_info("req-%lld: %s: Parent changed, restarting.\n", */
-	/* 		req->id, core->name); */
-	/* 	restart = true; */
-	/* } */
+	if (hw_req->desired.parent_rate &&
+	    hw_req->desired.parent_rate != parent_req->requested.rate) {
+		pr_info("req-%lld: %s: Parent rate changed, restarting.\n",
+			req->id, core->name);
+		restart = true;
+	}
 
-	/* if (hw_req->desired.parent_rate && */
-	/*     hw_req->desired.parent_rate != parent_req->requested.rate) { */
-	/* 	pr_info("req-%lld: %s: Parent rate changed, restarting.\n", */
-	/* 		req->id, core->name); */
-	/* 	restart = true; */
-	/* } */
-
-	/* if (restart) { */
-	/* 	parent_req->requested.rate = hw_req->desired.parent_rate; */
-	/* 	return -EAGAIN; */
-	/* } */
-
-	if (restart)
+	if (restart) {
+		parent_req->requested.rate = hw_req->desired.parent_rate;
 		return -EAGAIN;
+	}
 
 	return 0;
 }
 
-static int clk_request_check_hw_req(struct clk_request *req,
-				    struct clk_hw_requests *hw_reqs,
-				    struct clk_hw_request *hw_req,
-				    unsigned int try)
+static int clk_request_check_clk(struct clk_request *req,
+				 unsigned int try,
+				 struct clk_hw_request *item)
 {
-	struct clk_hw_request *child_hw_req;
+	const struct clk_core *core = item->core;
+	struct clk_core *child;
 	int ret;
 
-	ret = clk_request_check_clk_only(req, hw_reqs, hw_req, try);
+	ret = clk_request_check_clk_only(req, try, item);
 	if (ret)
 		return ret;
 
-	list_for_each_entry(child_hw_req, &hw_req->children, child_node) {
-		ret = clk_request_check_hw_req(req, hw_reqs, child_hw_req, try);
+	hlist_for_each_entry(child, &core->children, child_node) {
+		struct clk_hw_request *slot;
+
+		slot = clk_request_find_slot_by_clk_core(req, child);
+		if (!slot)
+			continue;
+
+		ret = clk_request_check_clk(req, try, slot);
 		if (ret)
 			return ret;
 	}
@@ -1174,18 +966,23 @@ static int clk_request_check_hw_req(struct clk_request *req,
 }
 
 static int clk_request_check_all(struct clk_request *req,
-				 struct clk_hw_requests *hw_reqs,
 				 unsigned int try)
 {
-	struct clk_hw_request *hw_req;
+	unsigned int i;
 
-	list_for_each_entry(hw_req, &hw_reqs->requests, node) {
-		const struct clk_core *core = hw_req->core;
+	for (i = 0; i < req->affected_clks_num; i++) {
+		struct clk_hw_request *slot = &req->affected_clks[i];
+		const struct clk_core *core = slot->core;
 		int ret;
 
 		pr_info("req-%lld: Found clock %s in request.\n", req->id, core->name);
 
-		ret = clk_request_check_hw_req(req, hw_reqs, hw_req, try);
+		if (!clk_request_is_clk_core_top(req, core)) {
+			pr_info("req-%lld: Clock %s is not a top clock, skipping.\n", req->id, core->name);
+			continue;
+		}
+
+		ret = clk_request_check_clk(req, try, slot);
 		if (ret)
 			return ret;
 	}
@@ -1197,23 +994,9 @@ static int clk_request_check_all(struct clk_request *req,
 
 static int clk_request_check_nolock(struct clk_request *req)
 {
-	struct clk_hw_requests *hw_reqs;
 	unsigned int try;
-	int ret;
 
 	lockdep_assert_held(&prepare_lock);
-
-	hw_reqs = kzalloc(sizeof(*hw_reqs), GFP_KERNEL);
-	if (!hw_reqs)
-		return -ENOMEM;
-
-	INIT_LIST_HEAD(&hw_reqs->requests);
-
-	ret = clk_hw_requests_build_from_request(hw_reqs, req);
-	if (ret)
-		return ret;
-
-	req->hw_reqs = hw_reqs;
 
 	for (try = 0; try < CLK_REQUEST_NUM_RETRIES; try++) {
 		int ret;
@@ -1221,7 +1004,7 @@ static int clk_request_check_nolock(struct clk_request *req)
 		pr_info("req-%lld: Checking request (tries left %u)\n",
 			req->id, CLK_REQUEST_NUM_RETRIES - try);
 
-		ret = clk_request_check_all(req, hw_reqs, try);
+		ret = clk_request_check_all(req, try);
 		if (ret) {
 			if (ret == -EAGAIN) {
 				continue;
