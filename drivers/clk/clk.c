@@ -1091,25 +1091,6 @@ static int clk_request_check_clk_only(struct clk_request *req,
 
 	pr_info("req-%lld: %s: Request OK.\n", req->id, core->name);
 
-	/* if (!core->num_parents) { */
-	/* 	WARN_ON(hw_req->desired.parent || hw_req->desired.parent_rate); */
-	/* 	pr_info("req-%lld: %s: No parents.\n", */
-	/* 		req->id, core->name); */
-	/* 	return 0; */
-	/* } */
-
-	/* if (!hw_req->desired.parent_set && !hw_req->desired.parent_rate_set) { */
-	/* 	pr_info("req-%lld: %s: Parent was unaffected.\n", */
-	/* 		req->id, core->name); */
-	/* 	return 0; */
-	/* } */
-
-	/* WARN_ON(hw_req->desired.parent && !hw_req->desired.parent_rate); */
-
-	/* parent = core->parent; */
-	/* if (hw_req->desired.parent_set) */
-	/* 	parent = hw_req->desired.parent; */
-
 	ret = clk_request_check_handle_parent_change(req, hw_reqs, hw_req);
 	if (ret) {
 		if (ret == -EAGAIN)
@@ -1125,38 +1106,6 @@ static int clk_request_check_clk_only(struct clk_request *req,
 		else
 			return ret;
 	}
-
-	/* parent_req = clk_hw_requests_find_request_or_alloc(req, req->hw_reqs, parent); */
-	/* if (IS_ERR(parent_req)) */
-	/* 	return PTR_ERR(parent_req); */
-
-	/* parent_rate = clk_core_get_rate_nolock(parent); */
-	/* if (!hw_req->desired.parent_rate || */
-	/*     hw_req->desired.parent_rate == parent_req->requested.rate || */
-	/*     hw_req->desired.parent_rate == parent_rate) { */
-	/* 	pr_info("req-%lld: %s: Parent rate is unchanged, request ok.\n", */
-	/* 		req->id, core->name); */
-	/* 	return 0; */
-	/* } */
-
-	/* if (hw_req->desired.parent && */
-	/*     hw_req->desired.parent != parent_req->requested.parent) { */
-	/* 	pr_info("req-%lld: %s: Parent changed, restarting.\n", */
-	/* 		req->id, core->name); */
-	/* 	restart = true; */
-	/* } */
-
-	/* if (hw_req->desired.parent_rate && */
-	/*     hw_req->desired.parent_rate != parent_req->requested.rate) { */
-	/* 	pr_info("req-%lld: %s: Parent rate changed, restarting.\n", */
-	/* 		req->id, core->name); */
-	/* 	restart = true; */
-	/* } */
-
-	/* if (restart) { */
-	/* 	parent_req->requested.rate = hw_req->desired.parent_rate; */
-	/* 	return -EAGAIN; */
-	/* } */
 
 	if (restart)
 		return -EAGAIN;
