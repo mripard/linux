@@ -992,11 +992,48 @@ void clk_request_put(struct clk_request *req)
 EXPORT_SYMBOL_GPL(clk_request_put);
 
 static int
+clk_hw_requests_evict_clk_core(struct clk_hw_requests *hw_reqs,
+			       const struct clk_core *core)
+{
+	const struct clk_core *child;
+	struct clk_hw_request *hw_req;
+	int ret;
+
+	hw_req = clk_hw_requests_find_hw_request_by_clk_core(hw_reqs, core);
+	if (!hw_req)
+		return 0;
+
+	hlist_for_each_entry(child, &core->children, child_node) {
+		struct clk_hw_request *hw_req;
+
+		hw_req = clk_hw_requests_find_hw_request_by_clk_core(hw_reqs, child);
+		if (!hw_req)
+			continue;
+
+		if (!hw_req->requested.parent_set)
+			continue;
+
+		if (hw_req->requested.parent != core)
+			continue;
+
+		ret = clk_hw_requests_evict_clk_core(hw_reqs, child);
+		if (ret)
+			return ret;
+	}
+
+	list_del(&hw_req->node);
+
+	return 0;
+}
+
+static int
 clk_request_check_handle_parent_change(struct clk_request *req,
 				       struct clk_hw_requests *hw_reqs,
 				       struct clk_hw_request *hw_req)
 {
 	const struct clk_core *core = hw_req->core;
+	const struct clk_core *old_parent;
+	int ret;
 
 	if (!hw_req->desired.parent_set)
 		return 0;
@@ -1010,7 +1047,16 @@ clk_request_check_handle_parent_change(struct clk_request *req,
 	pr_info("req-%lld: %s: Parent changed, adding clock to request and restarting.\n",
 		req->id, core->name);
 
+	old_parent = core->parent;
+	if (hw_req->requested.parent_set)
+		old_parent = hw_req->requested.parent;
+
 	clk_hw_request_set_requested_parent(hw_req, hw_req->desired.parent);
+
+	ret = clk_hw_requests_evict_clk_core(hw_reqs, old_parent);
+	if (ret)
+		return ret;
+
 	return -EAGAIN;
 }
 
