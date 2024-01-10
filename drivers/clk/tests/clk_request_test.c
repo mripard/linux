@@ -425,6 +425,21 @@ KUNIT_DEFINE_ACTION_WRAPPER(clk_request_put_wrapper,
 			    clk_request_put,
 			    struct clk_request *);
 
+static struct clk_request *
+clk_kunit_request_get(struct kunit *test, struct clk *clk)
+{
+	struct clk_request *req;
+	int ret;
+
+	req = clk_request_get(clk);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
+
+	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+
+	return req;
+}
+
 /*
  * Test that a clock that has a rate request for it and doesn't have
  * SET_RATE_PARENT will only affect itself, and none of its parent.
@@ -452,11 +467,8 @@ static void clk_request_test_lone_clock(struct kunit *test)
 	clk = clk_hw_get_clk(child, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -503,11 +515,8 @@ static void clk_request_test_lone_mux_clock(struct kunit *test)
 	clk = clk_hw_get_clk(child, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -541,11 +550,8 @@ static void clk_request_test_single_clock_checked(struct kunit *test)
 	clk = clk_hw_get_clk(hw, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -588,11 +594,8 @@ static void clk_request_test_lone_clock_checked(struct kunit *test)
 	clk = clk_hw_get_clk(child, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -630,11 +633,8 @@ static void clk_request_test_lone_clock_change_parent_rate(struct kunit *test)
 	clk = clk_hw_get_clk(child, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -674,11 +674,8 @@ static void clk_request_test_lone_clock_change_parent_rate_checked(struct kunit 
 	clk = clk_hw_get_clk(child, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -717,11 +714,8 @@ static void clk_request_test_lone_clock_set_rate(struct kunit *test)
 	clk = clk_hw_get_clk(child, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -765,11 +759,8 @@ static void clk_request_test_lone_clock_set_rate_checked(struct kunit *test)
 	clk = clk_hw_get_clk(child, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -815,11 +806,8 @@ static void clk_request_test_parent_clock(struct kunit *test)
 	clk = clk_hw_get_clk(parent, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -862,11 +850,8 @@ static void clk_request_test_parent_clock_3_levels(struct kunit *test)
 	clk = clk_hw_get_clk(middle, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -913,11 +898,8 @@ static void clk_request_test_siblings_clocks_set_rate(struct kunit *test)
 	clk = clk_hw_get_clk(child_1, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -995,11 +977,8 @@ static void clk_request_test_siblings_3_levels_set_rate_last_level(struct kunit 
 	clk = clk_hw_get_clk(bottom_left_left, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -1077,11 +1056,8 @@ static void clk_request_test_siblings_3_levels_set_rate_all_levels(struct kunit 
 	clk = clk_hw_get_clk(bottom_left_left, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -1161,11 +1137,8 @@ static void clk_request_test_reparent(struct kunit *test)
 	clk = clk_hw_get_clk(bottom_middle, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -1235,11 +1208,8 @@ static void clk_request_test_reparent_set_rate(struct kunit *test)
 	clk = clk_hw_get_clk(bottom_middle, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -1321,11 +1291,8 @@ static void clk_request_test_reparent_3_parents(struct kunit *test)
 	clk = clk_hw_get_clk(bottom_center, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -1410,11 +1377,8 @@ static void clk_request_test_reparent_separate_subtree(struct kunit *test)
 	clk = clk_hw_get_clk(top_left, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -1463,11 +1427,8 @@ static void clk_request_test_reparent_separate_subtree_set_rate(struct kunit *te
 	clk = clk_hw_get_clk(top_left, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
 
-	req = clk_request_get(clk);
+	req = clk_kunit_request_get(test, clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, clk, 144000000);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -1530,11 +1491,8 @@ static void clk_request_test_allwinner_dual_display(struct kunit *test)
 	tcon0_clk = clk_hw_get_clk(tcon0, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, tcon0_clk);
 
-	req = clk_request_get(tcon0_clk);
+	req = clk_kunit_request_get(test, tcon0_clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, tcon0_clk, TCON0_TEST_FREQ);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -1551,11 +1509,8 @@ static void clk_request_test_allwinner_dual_display(struct kunit *test)
 	hdmi_clk = clk_hw_get_clk(hdmi, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, hdmi_clk);
 
-	req = clk_request_get(hdmi_clk);
+	req = clk_kunit_request_get(test, hdmi_clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, hdmi_clk, HDMI_TEST_FREQ);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -1625,11 +1580,8 @@ static void clk_request_test_allwinner_dual_display_checked(struct kunit *test)
 	tcon0_clk = clk_hw_get_clk(tcon0, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, tcon0_clk);
 
-	req = clk_request_get(tcon0_clk);
+	req = clk_kunit_request_get(test, tcon0_clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, tcon0_clk, TCON0_TEST_FREQ);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -1645,11 +1597,8 @@ static void clk_request_test_allwinner_dual_display_checked(struct kunit *test)
 	hdmi_clk = clk_hw_get_clk(hdmi, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, hdmi_clk);
 
-	req = clk_request_get(hdmi_clk);
+	req = clk_kunit_request_get(test, hdmi_clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, hdmi_clk, HDMI_TEST_FREQ);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -1710,11 +1659,8 @@ static void clk_request_test_allwinner_dual_display_rate(struct kunit *test)
 	tcon0_clk = clk_hw_get_clk(tcon0, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, tcon0_clk);
 
-	req = clk_request_get(tcon0_clk);
+	req = clk_kunit_request_get(test, tcon0_clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, tcon0_clk, TCON0_TEST_FREQ);
 	KUNIT_ASSERT_EQ(test, ret, 0);
@@ -1727,11 +1673,8 @@ static void clk_request_test_allwinner_dual_display_rate(struct kunit *test)
 	hdmi_clk = clk_hw_get_clk(hdmi, NULL);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, hdmi_clk);
 
-	req = clk_request_get(hdmi_clk);
+	req = clk_kunit_request_get(test, hdmi_clk);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
-
-	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
-	KUNIT_ASSERT_EQ(test, ret, 0);
 
 	ret = clk_request_add_clock_rate(req, hdmi_clk, HDMI_TEST_FREQ);
 	KUNIT_ASSERT_EQ(test, ret, 0);
