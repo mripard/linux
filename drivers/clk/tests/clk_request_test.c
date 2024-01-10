@@ -1107,15 +1107,6 @@ static void clk_request_test_4(struct kunit *test)
 	 */
 }
 
-static void clk_request_test_9(struct kunit *test)
-{
-	/*
-	 * TODO: Test that if a clock decides to change parent as a
-	 * fallout of the first request validation, and it doesn't have
-	 * CLK_SET_RATE_PARENT, only that clock will be in the request.
-	 */
-}
-
 /*
  * Test that if the clock that was the trigger of the request wants to
  * change its parent, the old clocks that were there by side effect (its
@@ -1438,6 +1429,57 @@ static void clk_request_test_reparent_separate_subtree(struct kunit *test)
 	KUNIT_EXPECT_FALSE(test, clk_hw_is_in_request(bottom_right, req));
 }
 
+static void clk_request_test_reparent_separate_subtree_set_rate(struct kunit *test)
+{
+	struct clk_hw *top_left, *top_right;
+	struct clk_hw *bottom;
+	const struct clk_hw *parents[2];
+	struct clk_request *req;
+	struct clk *clk;
+	int ret;
+
+	top_left = clk_test_create_dummy(test,
+					 "top-left",
+					 0,
+					 DUMMY_CLOCK_RATE_1);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, top_left);
+
+	top_right = clk_test_create_dummy(test,
+					  "top-right",
+					  0,
+					  DUMMY_CLOCK_RATE_2);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, top_right);
+
+	parents[0] = top_left;
+	parents[1] = top_right;
+	bottom = clk_test_create_mux_with_ops(test,
+					      parents, ARRAY_SIZE(parents),
+					      &clk_multiple_parents_mux_ops_iterate_parent,
+					      "bottom",
+					      CLK_SET_RATE_PARENT,
+					      0);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom);
+
+	clk = clk_hw_get_clk(top_left, NULL);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, clk);
+
+	req = clk_request_get(clk);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, req);
+
+	ret = kunit_add_action_or_reset(test, &clk_request_put_wrapper, req);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+
+	ret = clk_request_add_clock_rate(req, clk, 144000000);
+	KUNIT_ASSERT_EQ(test, ret, 0);
+
+	ret = clk_request_check(req);
+	KUNIT_EXPECT_EQ(test, ret, 0);
+	KUNIT_EXPECT_EQ(test, clk_request_len(req), 3);
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(top_left, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(top_right, req));
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom, req));
+}
+
 #define HDMI_TEST_FREQ	(297 * FREQ_1MHZ)
 #define TCON0_TEST_FREQ	(200 * FREQ_1MHZ)
 
@@ -1723,12 +1765,12 @@ static struct kunit_case clk_request_test_cases[] = {
 	KUNIT_CASE(clk_request_test_reparent_3_parents),
 	KUNIT_CASE(clk_request_test_reparent_set_rate),
 	KUNIT_CASE(clk_request_test_reparent_separate_subtree),
+	KUNIT_CASE(clk_request_test_reparent_separate_subtree_set_rate),
 	KUNIT_CASE(clk_request_test_siblings_clocks_set_rate),
 	KUNIT_CASE(clk_request_test_siblings_3_levels_set_rate_all_levels),
 	KUNIT_CASE(clk_request_test_siblings_3_levels_set_rate_last_level),
 	KUNIT_CASE(clk_request_test_single_clock_checked),
 	KUNIT_CASE(clk_request_test_4),
-	KUNIT_CASE(clk_request_test_9),
 	KUNIT_CASE(clk_request_test_12),
 	KUNIT_CASE(clk_request_test_allwinner_dual_display),
 	KUNIT_CASE(clk_request_test_allwinner_dual_display_checked),
