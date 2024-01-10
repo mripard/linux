@@ -992,12 +992,18 @@ void clk_request_put(struct clk_request *req)
 EXPORT_SYMBOL_GPL(clk_request_put);
 
 static int
-clk_hw_requests_evict_clk_core(struct clk_hw_requests *hw_reqs,
+clk_hw_requests_evict_clk_core(const struct clk_request *req,
+			       struct clk_hw_requests *hw_reqs,
 			       const struct clk_core *core)
 {
 	const struct clk_core *child;
+	struct clk_request_item *item;
 	struct clk_hw_request *hw_req;
 	int ret;
+
+	item = clk_request_find_item_by_clk_core(req, core);
+	if (item)
+		return 0;
 
 	hw_req = clk_hw_requests_find_hw_request_by_clk_core(hw_reqs, core);
 	if (!hw_req)
@@ -1016,7 +1022,7 @@ clk_hw_requests_evict_clk_core(struct clk_hw_requests *hw_reqs,
 		if (hw_req->requested.parent != core)
 			continue;
 
-		ret = clk_hw_requests_evict_clk_core(hw_reqs, child);
+		ret = clk_hw_requests_evict_clk_core(req, hw_reqs, child);
 		if (ret)
 			return ret;
 	}
@@ -1053,7 +1059,7 @@ clk_request_check_handle_parent_change(struct clk_request *req,
 
 	clk_hw_request_set_requested_parent(hw_req, hw_req->desired.parent);
 
-	ret = clk_hw_requests_evict_clk_core(hw_reqs, old_parent);
+	ret = clk_hw_requests_evict_clk_core(req, hw_reqs, old_parent);
 	if (ret)
 		return ret;
 
@@ -1067,6 +1073,7 @@ clk_request_check_handle_parent_rate_change(struct clk_request *req,
 {
 	const struct clk_core *core = hw_req->core;
 	struct clk_hw_request *parent_req;
+	unsigned long long parent_rate;
 	struct clk_core *parent;
 
 	if (!hw_req->desired.parent_rate_set)
@@ -1094,6 +1101,11 @@ clk_request_check_handle_parent_rate_change(struct clk_request *req,
 		clk_hw_request_set_requested_rate(parent_req, hw_req->desired.parent_rate);
 		return -EAGAIN;
 	}
+
+	parent_rate = clk_core_get_rate_nolock(parent);
+	if (hw_req->desired.parent_rate_set &&
+	    hw_req->desired.parent_rate == parent_rate)
+		return 0;
 
 	parent_req = clk_hw_request_build_one(req, hw_reqs, parent);
 	if (IS_ERR(parent_req))
