@@ -76,8 +76,14 @@ static const struct clk_ops clk_dummy_rate_ops = {
 	.set_rate = clk_dummy_set_rate,
 };
 
+#define CLK_KUNIT_MUX_DEFAULT_PARENT_OFFSET	(1000 * FREQ_1MHZ)
+
+#define CLK_KUNIT_MUX_ITERATE_PARENT		BIT(0)
+#define CLK_KUNIT_MUX_CHANGE_PARENT_RATE	BIT(1)
+
 struct clk_mux_context {
 	struct clk_hw hw;
+	unsigned long flags;
 	unsigned int current_parent;
 	unsigned int check_called;
 };
@@ -90,44 +96,37 @@ static int clk_mux_check_request(struct clk_hw *hw,
 				 struct clk_hw_request *req)
 {
 	struct clk_mux_context *ctx = hw_to_mux(hw);
-
-	ctx->check_called++;
-
-	if (clk_hw_get_flags(hw) & CLK_SET_RATE_PARENT)
-		clk_hw_request_set_desired_parent(req,
-						  clk_hw_get_parent(hw),
-						  clk_hw_request_get_requested_rate(req));
-
-	return 0;
-}
-
-static int clk_mux_check_request_iterate_parent(struct clk_hw *hw,
-						unsigned int try,
-						struct clk_hw_request *req)
-{
-	struct clk_mux_context *ctx = hw_to_mux(hw);
 	struct kunit *test = kunit_get_current_test();
 	unsigned long long parent_rate;
 	unsigned int num_parents = clk_hw_get_num_parents(hw);
 	struct clk_hw *parent;
-	int parent_idx;
 
 	ctx->check_called++;
 
-	parent_idx = clk_hw_get_parent_index(hw);
-	KUNIT_ASSERT_GE(test, parent_idx, 0);
+	if (ctx->flags & CLK_KUNIT_MUX_ITERATE_PARENT) {
+		int parent_idx;
 
-	parent_idx = (parent_idx + 1) + try;
-	if (parent_idx >= num_parents)
-		parent_idx = num_parents - 1;
+		parent_idx = clk_hw_get_parent_index(hw);
+		KUNIT_ASSERT_GE(test, parent_idx, 0);
 
-	parent = clk_hw_get_parent_by_index(hw, parent_idx);
+		parent_idx = (parent_idx + 1) + try;
+		if (parent_idx >= num_parents)
+			parent_idx = num_parents - 1;
+
+		parent = clk_hw_get_parent_by_index(hw, parent_idx);
+	} else {
+		parent = clk_hw_get_parent(hw);
+	}
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, parent);
 
-	if (clk_hw_get_flags(hw) & CLK_SET_RATE_PARENT)
+	if (clk_hw_get_flags(hw) & CLK_SET_RATE_PARENT) {
 		parent_rate = clk_hw_request_get_requested_rate(req);
-	else
+
+		if (ctx->flags & CLK_KUNIT_MUX_CHANGE_PARENT_RATE)
+			parent_rate += CLK_KUNIT_MUX_DEFAULT_PARENT_OFFSET;
+	} else {
 		parent_rate = clk_hw_get_rate(parent);
+	}
 
 	clk_hw_request_set_desired_parent(req,
 					  parent,
@@ -157,13 +156,6 @@ static u8 clk_multiple_parents_mux_get_parent(struct clk_hw *hw)
 
 static const struct clk_ops clk_multiple_parents_mux_ops = {
 	.check_request = clk_mux_check_request,
-	.get_parent = clk_multiple_parents_mux_get_parent,
-	.set_parent = clk_multiple_parents_mux_set_parent,
-	.determine_rate = __clk_mux_determine_rate_closest,
-};
-
-static const struct clk_ops clk_multiple_parents_mux_ops_iterate_parent = {
-	.check_request = clk_mux_check_request_iterate_parent,
 	.get_parent = clk_multiple_parents_mux_get_parent,
 	.set_parent = clk_multiple_parents_mux_set_parent,
 	.determine_rate = __clk_mux_determine_rate_closest,
@@ -206,6 +198,7 @@ clk_test_create_mux_with_ops(struct kunit *test,
 			     const struct clk_ops *ops,
 			     const char *name,
 			     unsigned long flags,
+			     unsigned long mux_flags,
 			     unsigned int default_parent)
 {
 	const struct clk_init_data data = {
@@ -224,6 +217,7 @@ clk_test_create_mux_with_ops(struct kunit *test,
 
 	hw = &ctx->hw;
 	hw->init = &data;
+	ctx->flags = mux_flags;
 	ctx->current_parent = default_parent;
 
 	ret = clk_hw_register(NULL, hw);
@@ -240,12 +234,13 @@ clk_test_create_mux(struct kunit *test,
 		    const struct clk_hw **parent_hws, size_t num_parents,
 		    const char *name,
 		    unsigned long flags,
+		    unsigned long mux_flags,
 		    unsigned int default_parent)
 {
 	return clk_test_create_mux_with_ops(test,
 					    parent_hws, num_parents,
 					    &clk_multiple_parents_mux_ops,
-					    name, flags,
+					    name, flags, mux_flags,
 					    default_parent);
 }
 
@@ -509,6 +504,7 @@ static void clk_request_test_lone_mux_clock(struct kunit *test)
 	child = clk_test_create_mux(test,
 				    parents, ARRAY_SIZE(parents),
 				    "test-mux",
+				    0,
 				    0,
 				    0);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, child);
@@ -1086,9 +1082,10 @@ static void clk_request_test_4(struct kunit *test)
 
 /*
  * Test that if the clock that was the trigger of the request wants to
- * change its parent, the old clocks that were there by side effect (its
- * old parent, its old siblings) will no longer be part of the request,
- * and its new parent and siblings will be.
+ * change its parent but doesn't change its new parent rate, the old
+ * clocks that were there by side effect (its old parent, its old
+ * siblings) will no longer be part of the request, and its new parent
+ * and siblings won't be.
  */
 static void clk_request_test_reparent(struct kunit *test)
 {
@@ -1120,12 +1117,12 @@ static void clk_request_test_reparent(struct kunit *test)
 
 	parents[0] = top_left;
 	parents[1] = top_right;
-	bottom_middle = clk_test_create_mux_with_ops(test,
-						     parents, ARRAY_SIZE(parents),
-						     &clk_multiple_parents_mux_ops_iterate_parent,
-						     "bottom-middle",
-						     0,
-						     0);
+	bottom_middle = clk_test_create_mux(test,
+					    parents, ARRAY_SIZE(parents),
+					    "bottom-middle",
+					    0,
+					    CLK_KUNIT_MUX_ITERATE_PARENT,
+					    0);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_middle);
 
 	bottom_right = clk_kunit_create_ro_div(test,
@@ -1146,12 +1143,12 @@ static void clk_request_test_reparent(struct kunit *test)
 
 	ret = clk_request_check(req);
 	KUNIT_EXPECT_EQ(test, ret, 0);
-	KUNIT_EXPECT_EQ(test, clk_request_len(req), 3);
+	KUNIT_EXPECT_EQ(test, clk_request_len(req), 1);
+	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom_middle, req));
 	KUNIT_EXPECT_FALSE(test, clk_hw_is_in_request(top_left, req));
 	KUNIT_EXPECT_FALSE(test, clk_hw_is_in_request(bottom_left, req));
-	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(top_right, req));
-	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom_middle, req));
-	KUNIT_EXPECT_TRUE(test, clk_hw_is_in_request(bottom_right, req));
+	KUNIT_EXPECT_FALSE(test, clk_hw_is_in_request(top_right, req));
+	KUNIT_EXPECT_FALSE(test, clk_hw_is_in_request(bottom_right, req));
 }
 
 /*
@@ -1191,12 +1188,12 @@ static void clk_request_test_reparent_set_rate(struct kunit *test)
 
 	parents[0] = top_left;
 	parents[1] = top_right;
-	bottom_middle = clk_test_create_mux_with_ops(test,
-						     parents, ARRAY_SIZE(parents),
-						     &clk_multiple_parents_mux_ops_iterate_parent,
-						     "bottom-middle",
-						     CLK_SET_RATE_PARENT,
-						     0);
+	bottom_middle = clk_test_create_mux(test,
+					    parents, ARRAY_SIZE(parents),
+					    "bottom-middle",
+					    CLK_SET_RATE_PARENT,
+					    CLK_KUNIT_MUX_ITERATE_PARENT,
+					    0);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_middle);
 
 	bottom_right = clk_kunit_create_ro_div(test,
@@ -1272,12 +1269,13 @@ static void clk_request_test_reparent_3_parents(struct kunit *test)
 	parents[0] = top_left;
 	parents[1] = top_center;
 	parents[2] = top_right;
-	bottom_center = clk_test_create_mux_with_ops(test,
-						     parents, ARRAY_SIZE(parents),
-						     &clk_multiple_parents_mux_ops_iterate_parent,
-						     "bottom-center",
-						     0,
-						     0);
+	bottom_center = clk_test_create_mux(test,
+					    parents, ARRAY_SIZE(parents),
+					    "bottom-center",
+					    CLK_SET_RATE_PARENT,
+					    CLK_KUNIT_MUX_ITERATE_PARENT |
+					    CLK_KUNIT_MUX_CHANGE_PARENT_RATE,
+					    0);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_center);
 	bottom_center_ctx = hw_to_mux(bottom_center);
 
@@ -1360,12 +1358,12 @@ static void clk_request_test_reparent_separate_subtree(struct kunit *test)
 
 	parents[0] = top_left;
 	parents[1] = top_right;
-	bottom_middle = clk_test_create_mux_with_ops(test,
-						     parents, ARRAY_SIZE(parents),
-						     &clk_multiple_parents_mux_ops_iterate_parent,
-						     "bottom-middle",
-						     0,
-						     0);
+	bottom_middle = clk_test_create_mux(test,
+					    parents, ARRAY_SIZE(parents),
+					    "bottom-middle",
+					    0,
+					    CLK_KUNIT_MUX_ITERATE_PARENT,
+					    0);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom_middle);
 
 	bottom_right = clk_kunit_create_ro_div(test,
@@ -1417,12 +1415,12 @@ static void clk_request_test_reparent_separate_subtree_set_rate(struct kunit *te
 
 	parents[0] = top_left;
 	parents[1] = top_right;
-	bottom = clk_test_create_mux_with_ops(test,
-					      parents, ARRAY_SIZE(parents),
-					      &clk_multiple_parents_mux_ops_iterate_parent,
-					      "bottom",
-					      CLK_SET_RATE_PARENT,
-					      0);
+	bottom = clk_test_create_mux(test,
+				     parents, ARRAY_SIZE(parents),
+				     "bottom",
+				     CLK_SET_RATE_PARENT,
+				     CLK_KUNIT_MUX_ITERATE_PARENT,
+				     0);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bottom);
 
 	clk = clk_hw_get_clk(top_left, NULL);
