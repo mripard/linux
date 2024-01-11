@@ -12,6 +12,7 @@
 #define DUMMY_CLOCK_INIT_RATE	(42 * FREQ_1MHZ)
 #define DUMMY_CLOCK_RATE_1	(142 * FREQ_1MHZ)
 #define DUMMY_CLOCK_RATE_2	(242 * FREQ_1MHZ)
+#define DUMMY_CLOCK_RATE_3	(342 * FREQ_1MHZ)
 
 struct clk_dummy_context {
 	struct clk_hw hw;
@@ -1251,13 +1252,13 @@ static void clk_request_test_reparent_3_parents(struct kunit *test)
 	top_center = clk_test_create_dummy(test,
 					   "top-center",
 					   0,
-					   DUMMY_CLOCK_RATE_1);
+					   DUMMY_CLOCK_RATE_2);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, top_center);
 
 	top_right = clk_test_create_dummy(test,
 					  "top-right",
 					  0,
-					  DUMMY_CLOCK_RATE_2);
+					  DUMMY_CLOCK_RATE_3);
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, top_right);
 	top_right_ctx = hw_to_dummy(top_right);
 
