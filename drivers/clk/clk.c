@@ -792,15 +792,18 @@ static void clk_hw_request_dump(const struct clk_hw_request *req)
 	pr_info("req-%lld: %s\n", req->req->id, req->core->name);
 
 	pr_info("\tRequested:\n");
-	pr_info("\t\trate: %llu Hz\n", req->requested.rate);
-	if (req->requested.parent)
+	if (req->requested.rate_set)
+		pr_info("\t\trate: %llu Hz\n", req->requested.rate);
+	if (req->requested.parent_set)
 		pr_info("\t\tparent: %s\n", req->requested.parent->name);
 
 	pr_info("\tDesired:\n");
-	pr_info("\t\trate: %llu Hz\n", req->requested.rate);
-	if (req->desired.parent)
+	if (req->desired.rate_set)
+		pr_info("\t\trate: %llu Hz\n", req->desired.rate);
+	if (req->desired.parent_set)
 		pr_info("\t\tparent: %s\n", req->desired.parent->name);
-	pr_info("\t\tparent rate: %llu Hz\n", req->desired.parent_rate);
+	if (req->desired.parent_rate_set)
+		pr_info("\t\tparent rate: %llu Hz\n", req->desired.parent_rate);
 }
 
 static struct clk_request_item *
