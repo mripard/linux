@@ -18,8 +18,9 @@
 /* Valid FD_FLAGS are O_CLOEXEC, O_RDONLY, O_WRONLY, O_RDWR */
 #define DMA_HEAP_VALID_FD_FLAGS (O_CLOEXEC | O_ACCMODE)
 
-/* Currently no heap flags */
-#define DMA_HEAP_VALID_HEAP_FLAGS (0)
+#define DMA_HEAP_FLAG_ECC_PROTECTED	BIT(0)
+#define DMA_HEAP_FLAG_ECC_UNPROTECTED	BIT(1)
+#define DMA_HEAP_VALID_HEAP_FLAGS (DMA_HEAP_FLAG_ECC_PROTECTED | DMA_HEAP_FLAG_ECC_UNPROTECTED)
 
 /**
  * struct dma_heap_allocation_data - metadata passed from userspace for
