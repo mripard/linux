@@ -20,9 +20,11 @@
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
+#include <linux/of.h>
 
 struct system_heap {
 	struct dma_heap *heap;
+	bool ecc_enabled;
 };
 
 struct system_heap_buffer {
@@ -338,6 +340,7 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 					    unsigned long fd_flags,
 					    unsigned long heap_flags)
 {
+	struct system_heap *sys_heap = dma_heap_get_drvdata(heap);
 	struct system_heap_buffer *buffer;
 	DEFINE_DMA_BUF_EXPORT_INFO(exp_info);
 	unsigned long size_remaining = len;
@@ -348,6 +351,12 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 	struct list_head pages;
 	struct page *page, *tmp_page;
 	int i, ret = -ENOMEM;
+
+	if (!sys_heap->ecc_enabled && (heap_flags & DMA_HEAP_FLAG_ECC_PROTECTED))
+		return ERR_PTR(-EINVAL);
+
+	if (sys_heap->ecc_enabled && (heap_flags & DMA_HEAP_FLAG_ECC_UNPROTECTED))
+		return ERR_PTR(-EINVAL);
 
 	buffer = kzalloc(sizeof(*buffer), GFP_KERNEL);
 	if (!buffer)
@@ -431,6 +440,9 @@ static int system_heap_create(void)
 	sys_heap = kzalloc(sizeof(*sys_heap), GFP_KERNEL);
 	if (!sys_heap)
 		return -ENOMEM;
+
+	if (of_memory_get_ecc_correction_bits() > 0)
+		sys_heap->ecc_enabled = true;
 
 	exp_info.name = "system";
 	exp_info.ops = &system_heap_ops;
