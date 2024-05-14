@@ -8,6 +8,7 @@
 struct carveout_heap_priv {
 	struct dma_heap *heap;
 	struct gen_pool *pool;
+	bool ecc_enabled;
 };
 
 struct carveout_heap_buffer_priv {
@@ -184,6 +185,12 @@ static struct dma_buf *carveout_heap_allocate(struct dma_heap *heap,
 	void *buffer;
 	int ret;
 
+	if (!heap_priv->ecc_enabled && (heap_flags & DMA_HEAP_FLAG_ECC_PROTECTED))
+		return ERR_PTR(-EINVAL);
+
+	if (heap_priv->ecc_enabled && (heap_flags & DMA_HEAP_FLAG_ECC_UNPROTECTED))
+		return ERR_PTR(-EINVAL);
+
 	buffer_priv = kzalloc(sizeof(*buffer_priv), GFP_KERNEL);
 	if (!buffer_priv)
 		return ERR_PTR(-ENOMEM);
@@ -237,6 +244,7 @@ static int __init carveout_heap_setup(struct device_node *node)
 	struct dma_heap *heap;
 	struct gen_pool *pool;
 	void *base;
+	u32 val = 0;
 	int ret;
 
 	rmem = of_reserved_mem_lookup(node);
@@ -246,6 +254,14 @@ static int __init carveout_heap_setup(struct device_node *node)
 	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
+
+	of_property_read_u32(node, "ecc-correction-bits", &val);
+	if (val <= 0) {
+		if (of_memory_get_ecc_correction_bits() > 0)
+			priv->ecc_enabled = true;
+	} else {
+		priv->ecc_enabled = true;
+	}
 
 	pool = gen_pool_create(PAGE_SHIFT, NUMA_NO_NODE);
 	if (!pool) {
