@@ -1512,6 +1512,31 @@ static inline int of_get_available_child_count(const struct device_node *np)
 	return num;
 }
 
+/**
+ * of_memory_get_ecc_correction_bits() - Returns the number of ECC correction bits
+ *
+ * Search for the number of bits in memory that can be corrected by the
+ * ECC algorithm.
+ *
+ * Returns:
+ * The number of ECC bits, 0 if there's no ECC support, a negative error
+ * code on failure.
+ */
+static inline int of_memory_get_ecc_correction_bits(void)
+{
+	struct device_node *mem;
+	u32 val = 0;
+
+	mem = of_find_node_by_path("/memory");
+	if (!mem)
+		return -ENODEV;
+
+	of_property_read_u32(mem, "ecc-correction-bits", &val);
+	of_node_put(mem);
+
+	return val;
+}
+
 #define _OF_DECLARE_STUB(table, name, compat, fn, fn_type)		\
 	static const struct of_device_id __of_table_##name		\
 		__attribute__((unused))					\
