@@ -26,6 +26,7 @@
 struct cma_heap {
 	struct dma_heap *heap;
 	struct cma *cma;
+	bool ecc_enabled;
 };
 
 struct cma_heap_buffer {
@@ -288,6 +289,12 @@ static struct dma_buf *cma_heap_allocate(struct dma_heap *heap,
 	int ret = -ENOMEM;
 	pgoff_t pg;
 
+	if (!cma_heap->ecc_enabled && (heap_flags & DMA_HEAP_FLAG_ECC_PROTECTED))
+		return -EINVAL;
+
+	if (cma_heap->ecc_enabled && (heap_flags & DMA_HEAP_FLAG_ECC_UNPROTECTED))
+		return -EINVAL;
+
 	buffer = kzalloc(sizeof(*buffer), GFP_KERNEL);
 	if (!buffer)
 		return ERR_PTR(-ENOMEM);
@@ -375,6 +382,9 @@ static int __add_cma_heap(struct cma *cma, void *data)
 	if (!cma_heap)
 		return -ENOMEM;
 	cma_heap->cma = cma;
+
+	if (of_memory_get_ecc_correction_bits() > 0)
+		cma_heap->ecc_enabled = true;
 
 	exp_info.name = cma_get_name(cma);
 	exp_info.ops = &cma_heap_ops;
