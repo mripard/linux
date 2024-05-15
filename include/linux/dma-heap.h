@@ -12,6 +12,8 @@
 #include <linux/cdev.h>
 #include <linux/types.h>
 
+#include <uapi/linux/dma-heap.h>
+
 struct dma_heap;
 
 /**
