@@ -18,6 +18,7 @@
 #include <linux/io.h>
 #include <linux/mm.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
@@ -290,10 +291,10 @@ static struct dma_buf *cma_heap_allocate(struct dma_heap *heap,
 	pgoff_t pg;
 
 	if (!cma_heap->ecc_enabled && (heap_flags & DMA_HEAP_FLAG_ECC_PROTECTED))
-		return -EINVAL;
+		return ERR_PTR(-EINVAL);
 
 	if (cma_heap->ecc_enabled && (heap_flags & DMA_HEAP_FLAG_ECC_UNPROTECTED))
-		return -EINVAL;
+		return ERR_PTR(-EINVAL);
 
 	buffer = kzalloc(sizeof(*buffer), GFP_KERNEL);
 	if (!buffer)
