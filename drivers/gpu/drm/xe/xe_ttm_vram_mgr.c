@@ -339,6 +339,16 @@ int __xe_ttm_vram_mgr_init(struct xe_device *xe, struct xe_ttm_vram_mgr *mgr,
 	struct ttm_resource_manager *man = &mgr->manager;
 	int err;
 
+	if (mem_type != XE_PL_STOLEN) {
+		int cgregion = xe->cg.num_regions++;
+
+		xe->cg.regions[cgregion].size = size;
+		xe->cg.regions[cgregion].name =
+			mem_type == XE_PL_VRAM0 ? "vram0" : "vram1";
+		man->cgdev = &xe->cg;
+		man->cgidx = cgregion;
+	}
+
 	man->func = &xe_ttm_vram_mgr_func;
 	mgr->mem_type = mem_type;
 	mutex_init(&mgr->lock);

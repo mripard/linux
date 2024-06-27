@@ -7,6 +7,7 @@
 #define _XE_DEVICE_TYPES_H_
 
 #include <linux/pci.h>
+#include <linux/cgroup_drm.h>
 
 #include <drm/drm_device.h>
 #include <drm/drm_file.h>
@@ -219,6 +220,9 @@ struct xe_device {
 
 	/** @devcoredump: device coredump */
 	struct xe_devcoredump devcoredump;
+
+	/** @cg: drm cgroup bookkeeping */
+	struct drmcgroup_device cg;
 
 	/** @info: device info */
 	struct intel_device_info {
