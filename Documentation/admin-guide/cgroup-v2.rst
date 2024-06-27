@@ -2574,6 +2574,57 @@ RDMA Interface Files
 	  mlx4_0 hca_handle=1 hca_object=20
 	  ocrdma1 hca_handle=1 hca_object=23
 
+DRM
+----
+
+The "drm" controller regulates the distribution and accounting of
+DRM resources, currently only memory regions. Because each memory
+region may have its own page size, which does not have to be equal
+to the system page size. the units are in bytes.
+
+DRM Interface Files
+~~~~~~~~~~~~~~~~~~~~
+
+  drm.max, drm.min, drm.low
+	A readwrite nested-keyed file that exists for all the cgroups
+	except root that describes current configured resource limit
+	for a DRM device.
+
+	Lines are keyed by device name and are not ordered.
+	Each line contains space separated resource name and its configured
+	limit that can be distributed.
+
+	The following nested keys are defined.
+
+	  ==========	=======================================================
+	  region.* 	Maximum amount of bytes that allocatable in this region
+	  ==========	=======================================================
+
+	An example for xe follows::
+
+	  0000:03:00.0 region.vram0=1073741824 region.stolen=max
+
+	The semantics are the same as for the memory cgroup controller, and are
+	calculated in the same way.
+
+  drm.capacity
+	A read-only file that describes maximum region capacity.
+	It only exists on the root cgroup. Not all memory can be
+	allocated by cgroups, as the kernel reserves some for
+	internal use.
+
+	An example for xe follows::
+
+	  0000:03:00.0 region.vram0=8514437120 region.stolen=67108864
+
+  drm.current
+	A read-only file that describes current resource usage.
+	It exists for all the cgroup except root.
+
+	An example for xe follows::
+
+	  0000:03:00.0 region.vram0=12550144 region.stolen=8650752
+
 HugeTLB
 -------
 
