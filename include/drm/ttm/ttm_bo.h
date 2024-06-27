@@ -390,7 +390,8 @@ int ttm_mem_evict_first(struct ttm_device *bdev,
 			struct ttm_resource_manager *man,
 			const struct ttm_place *place,
 			struct ttm_operation_ctx *ctx,
-			struct ww_acquire_ctx *ticket);
+			struct ww_acquire_ctx *ticket,
+			struct drmcgroup_pool_state *limitcg);
 vm_fault_t ttm_bo_vm_reserve(struct ttm_buffer_object *bo,
 			     struct vm_fault *vmf);
 vm_fault_t ttm_bo_vm_fault_reserved(struct vm_fault *vmf,
