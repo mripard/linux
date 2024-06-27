@@ -101,6 +101,18 @@ static void ttm_sys_mgr_fini(struct drm_device *drm, void *arg)
 	ttm_set_driver_manager(&xe->ttm, XE_PL_TT, NULL);
 }
 
+static inline void apply_cg(struct xe_device *xe,
+			    struct ttm_resource_manager *man,
+			    u64 gtt_size)
+{
+	int cgregion = xe->cg.num_regions++;
+
+	xe->cg.regions[cgregion].size = gtt_size;
+	xe->cg.regions[cgregion].name = "mapped";
+	man->cgdev = &xe->cg;
+	man->cgidx = cgregion;
+
+}
 int xe_ttm_sys_mgr_init(struct xe_device *xe)
 {
 	struct ttm_resource_manager *man = &xe->mem.sys_mgr;
@@ -116,6 +128,8 @@ int xe_ttm_sys_mgr_init(struct xe_device *xe)
 	man->func = &xe_ttm_sys_mgr_func;
 	ttm_resource_manager_init(man, &xe->ttm, gtt_size >> PAGE_SHIFT);
 	ttm_set_driver_manager(&xe->ttm, XE_PL_TT, man);
+	apply_cg(xe, man, gtt_size);
+
 	ttm_resource_manager_set_used(man, true);
 	return drmm_add_action_or_reset(&xe->drm, ttm_sys_mgr_fini, xe);
 }
