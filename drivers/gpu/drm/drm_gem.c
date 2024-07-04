@@ -110,6 +110,10 @@ drm_gem_init(struct drm_device *dev)
 				    DRM_FILE_PAGE_OFFSET_START,
 				    DRM_FILE_PAGE_OFFSET_SIZE);
 
+	dev->cg.regions[0].size = U64_MAX;
+	dev->cg.regions[0].name = "gem";
+	dev->cg.num_regions++;
+
 	return drmm_add_action(dev, drm_gem_init_release, NULL);
 }
 

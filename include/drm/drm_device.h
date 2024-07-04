@@ -1,6 +1,7 @@
 #ifndef _DRM_DEVICE_H_
 #define _DRM_DEVICE_H_
 
+#include <linux/cgroup_dev.h>
 #include <linux/list.h>
 #include <linux/kref.h>
 #include <linux/mutex.h>
@@ -316,6 +317,9 @@ struct drm_device {
 	 * Root directory for debugfs files.
 	 */
 	struct dentry *debugfs_root;
+
+	/** @cg: device cgroup bookkeeping */
+	struct dev_cgroup_device cg;
 };
 
 #endif
