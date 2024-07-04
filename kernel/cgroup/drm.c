@@ -566,7 +566,7 @@ static int drmcg_capacity_show(struct seq_file *sf, void *v)
 	list_for_each_entry_rcu(dev, &drmcg_devices, dev_node) {
 		seq_puts(sf, dev->name);
 		for (i = 0; i < dev->base.num_regions; i++)
-			seq_printf(sf, " region.%s=%lld",
+			seq_printf(sf, " region.%s=%llu",
 				   dev->base.regions[i].name,
 				   dev->base.regions[i].size);
 		seq_putc(sf, '\n');
