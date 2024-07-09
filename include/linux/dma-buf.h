@@ -439,6 +439,14 @@ struct dma_buf {
 
 		__poll_t active;
 	} cb_in, cb_out;
+
+#ifdef CONFIG_CGROUP_DEV
+	struct dma_buf_cgroup_t {
+		struct dev_cgroup_pool_state *pool;
+		u32 region;
+	} cgroup;
+#endif
+
 #ifdef CONFIG_DMABUF_SYSFS_STATS
 	/**
 	 * @sysfs_entry:

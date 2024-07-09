@@ -13,6 +13,7 @@
 
 #include <linux/fs.h>
 #include <linux/slab.h>
+#include <linux/cgroup_dev.h>
 #include <linux/dma-buf.h>
 #include <linux/dma-fence.h>
 #include <linux/dma-fence-unwrap.h>
@@ -99,6 +100,14 @@ static void dma_buf_release(struct dentry *dentry)
 	BUG_ON(dmabuf->cb_in.active || dmabuf->cb_out.active);
 
 	dma_buf_stats_teardown(dmabuf);
+
+	if (dmabuf->cgroup.pool) {
+		struct dev_cgroup_pool_state *pool = dmabuf->cgroup.pool;
+		u32 region = dmabuf->cgroup.region;
+
+		dev_cgroup_uncharge(pool, region, dmabuf->size);
+	}
+
 	dmabuf->ops->release(dmabuf);
 
 	if (dmabuf->resv == (struct dma_resv *)&dmabuf[1])
