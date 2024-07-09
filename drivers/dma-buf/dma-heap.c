@@ -7,6 +7,7 @@
  */
 
 #include <linux/cdev.h>
+#include <linux/cgroup_dev.h>
 #include <linux/debugfs.h>
 #include <linux/device.h>
 #include <linux/dma-buf.h>
@@ -41,6 +42,8 @@ struct dma_heap {
 	dev_t heap_devt;
 	struct list_head list;
 	struct cdev heap_cdev;
+
+	struct dev_cgroup_device cgroup_device;
 };
 
 static LIST_HEAD(heap_list);
@@ -49,11 +52,15 @@ static dev_t dma_heap_devt;
 static struct class *dma_heap_class;
 static DEFINE_XARRAY_ALLOC(dma_heap_minors);
 
+#define CGROUP_REGION_IDX	0
+
 static int dma_heap_buffer_alloc(struct dma_heap *heap, size_t len,
 				 u32 fd_flags,
 				 u64 heap_flags)
 {
+	struct dev_cgroup_pool_state *pool;
 	struct dma_buf *dmabuf;
+	int ret;
 	int fd;
 
 	/*
@@ -64,15 +71,23 @@ static int dma_heap_buffer_alloc(struct dma_heap *heap, size_t len,
 	if (!len)
 		return -EINVAL;
 
+	ret = dev_cgroup_try_charge(&heap->cgroup_device, CGROUP_REGION_IDX, len, &pool, NULL);
+	if (ret)
+		return ret;
+
 	dmabuf = heap->ops->allocate(heap, len, fd_flags, heap_flags);
 	if (IS_ERR(dmabuf))
 		return PTR_ERR(dmabuf);
+
+	dmabuf->cgroup.pool = pool;
+	dmabuf->cgroup.region = CGROUP_REGION_IDX;
 
 	fd = dma_buf_fd(dmabuf, fd_flags);
 	if (fd < 0) {
 		dma_buf_put(dmabuf);
 		/* just return, as put will call release and that will free */
 	}
+
 	return fd;
 }
 
@@ -221,6 +236,7 @@ struct dma_heap *dma_heap_add(const struct dma_heap_export_info *exp_info)
 	struct dma_heap *heap, *h, *err_ret;
 	struct device *dev_ret;
 	unsigned int minor;
+	char heap_name[32];
 	int ret;
 
 	if (!exp_info->name || !strcmp(exp_info->name, "")) {
@@ -261,6 +277,18 @@ struct dma_heap *dma_heap_add(const struct dma_heap_export_info *exp_info)
 		goto err1;
 	}
 
+	heap->cgroup_device.regions[0].size = U64_MAX;
+	heap->cgroup_device.regions[0].name = "main";
+	heap->cgroup_device.num_regions++;
+
+	snprintf(heap_name, sizeof(heap_name), "heap/%s", heap->name);
+	ret = dev_cgroup_register_device(&heap->cgroup_device, heap_name);
+	if (ret) {
+		pr_err("dma_heap: Unable to register cgroup device.");
+		err_ret = ERR_PTR(ret);
+		goto err2;
+	}
+
 	dev_ret = device_create(dma_heap_class,
 				NULL,
 				heap->heap_devt,
@@ -269,7 +297,7 @@ struct dma_heap *dma_heap_add(const struct dma_heap_export_info *exp_info)
 	if (IS_ERR(dev_ret)) {
 		pr_err("dma_heap: Unable to create device\n");
 		err_ret = ERR_CAST(dev_ret);
-		goto err2;
+		goto err3;
 	}
 
 	mutex_lock(&heap_list_lock);
@@ -280,7 +308,7 @@ struct dma_heap *dma_heap_add(const struct dma_heap_export_info *exp_info)
 			pr_err("dma_heap: Already registered heap named %s\n",
 			       exp_info->name);
 			err_ret = ERR_PTR(-EINVAL);
-			goto err3;
+			goto err4;
 		}
 	}
 
@@ -290,10 +318,12 @@ struct dma_heap *dma_heap_add(const struct dma_heap_export_info *exp_info)
 
 	return heap;
 
-err3:
+err4:
 	device_destroy(dma_heap_class, heap->heap_devt);
-err2:
+err3:
 	cdev_del(&heap->heap_cdev);
+err2:
+	dev_cgroup_unregister_device(&heap->cgroup_device);
 err1:
 	xa_erase(&dma_heap_minors, minor);
 err0:
