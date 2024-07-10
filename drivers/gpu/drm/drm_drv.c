@@ -831,9 +831,11 @@ static inline void drmm_cg_unregister_device(struct drm_device *dev, void *arg)
 int drmm_cgroup_register_device(struct drm_device *dev,
 				struct drmcgroup_device *cgdev)
 {
+	char dev_name[32];
 	int ret;
 
-	ret = drmcg_register_device(cgdev, dev->unique);
+	snprintf(dev_name, sizeof(dev_name), "drm/%s", dev->unique);
+	ret = drmcg_register_device(cgdev, dev_name);
 	if (ret)
 		return ret;
 
