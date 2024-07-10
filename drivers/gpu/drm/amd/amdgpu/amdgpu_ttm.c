@@ -1874,7 +1874,7 @@ int amdgpu_ttm_init(struct amdgpu_device *adev)
 		return r;
 	}
 
-	r = drmmcg_register_device(adev_to_drm(adev), &adev->cg);
+	r = drmm_cgroup_register_device(adev_to_drm(adev), &adev->cg);
 	if (r) {
 		DRM_ERROR("Failed initializing cgroup allocator.\n");
 		return r;
