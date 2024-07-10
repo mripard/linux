@@ -12,7 +12,6 @@
 #include <drm/drm_managed.h>
 
 struct drm_device;
-struct drm_file;
 
 struct drmcgroup_pool_state;
 
