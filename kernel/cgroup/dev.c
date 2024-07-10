@@ -27,9 +27,9 @@ struct drmcg_device {
 	struct list_head pools;
 
 	/* Copy of the struct passed by device, to prevent lifetime issues */
-	struct drmcgroup_device base;
+	struct dev_cgroup_device base;
 
-	/* Name describing the card, set by drmcg_register_device */
+	/* Name describing the card, set by dev_cgroup_register_device */
 	const char *name;
 
 	/* Whether the device is unregistered by its caller.
@@ -44,7 +44,7 @@ struct drmcgroup_state {
 	struct list_head pools;
 };
 
-struct drmcgroup_pool_state {
+struct dev_cgroup_pool_state {
 	struct drmcg_device *device;
 	struct drmcgroup_state *cs;
 
@@ -65,8 +65,8 @@ struct drmcgroup_pool_state {
 /*
  * 3 operations require locking protection:
  * - Registering and unregistering device to/from list, requires global lock.
- * - Adding a drmcgroup_pool_state to a CSS, removing when CSS is freed.
- * - Adding a drmcgroup_pool_state to a device list.
+ * - Adding a dev_cgroup_pool_state to a CSS, removing when CSS is freed.
+ * - Adding a dev_cgroup_pool_state to a device list.
  *
  * Since for the most common operations RCU provides enough protection, I
  * do not think more granular locking makes sense. Most protection is offered
@@ -91,51 +91,51 @@ static struct drmcgroup_state *parent_drmcg(struct drmcgroup_state *cg)
 	return cg->css.parent ? css_to_drmcs(cg->css.parent) : NULL;
 }
 
-static void free_cg_pool(struct drmcgroup_pool_state *pool)
+static void free_cg_pool(struct dev_cgroup_pool_state *pool)
 {
 	list_del(&pool->dev_node);
 	kfree(pool);
 }
 
 static void
-set_resource_min(struct drmcgroup_pool_state *pool, int i, u64 val)
+set_resource_min(struct dev_cgroup_pool_state *pool, int i, u64 val)
 {
 	page_counter_set_min(&pool->resources[i].cnt, val);
 }
 
 static void
-set_resource_low(struct drmcgroup_pool_state *pool, int i, u64 val)
+set_resource_low(struct dev_cgroup_pool_state *pool, int i, u64 val)
 {
 	page_counter_set_low(&pool->resources[i].cnt, val);
 }
 
 static void
-set_resource_max(struct drmcgroup_pool_state *pool, int i, u64 val)
+set_resource_max(struct dev_cgroup_pool_state *pool, int i, u64 val)
 {
 	page_counter_set_max(&pool->resources[i].cnt, val);
 }
 
-static u64 get_resource_low(struct drmcgroup_pool_state *pool, int idx)
+static u64 get_resource_low(struct dev_cgroup_pool_state *pool, int idx)
 {
 	return pool ? READ_ONCE(pool->resources[idx].cnt.low) : 0;
 }
 
-static u64 get_resource_min(struct drmcgroup_pool_state *pool, int idx)
+static u64 get_resource_min(struct dev_cgroup_pool_state *pool, int idx)
 {
 	return pool ? READ_ONCE(pool->resources[idx].cnt.min) : 0;
 }
 
-static u64 get_resource_max(struct drmcgroup_pool_state *pool, int idx)
+static u64 get_resource_max(struct dev_cgroup_pool_state *pool, int idx)
 {
 	return pool ? READ_ONCE(pool->resources[idx].cnt.max) : PAGE_COUNTER_MAX;
 }
 
-static u64 get_resource_current(struct drmcgroup_pool_state *pool, int idx)
+static u64 get_resource_current(struct dev_cgroup_pool_state *pool, int idx)
 {
 	return pool ? page_counter_read(&pool->resources[idx].cnt) : 0;
 }
 
-static void reset_all_resource_limits(struct drmcgroup_pool_state *rpool)
+static void reset_all_resource_limits(struct dev_cgroup_pool_state *rpool)
 {
 	int i;
 
@@ -149,7 +149,7 @@ static void reset_all_resource_limits(struct drmcgroup_pool_state *rpool)
 static void drmcs_offline(struct cgroup_subsys_state *css)
 {
 	struct drmcgroup_state *drmcs = css_to_drmcs(css);
-	struct drmcgroup_pool_state *pool;
+	struct dev_cgroup_pool_state *pool;
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(pool, &drmcs->pools, css_node)
@@ -160,7 +160,7 @@ static void drmcs_offline(struct cgroup_subsys_state *css)
 static void drmcs_free(struct cgroup_subsys_state *css)
 {
 	struct drmcgroup_state *drmcs = css_to_drmcs(css);
-	struct drmcgroup_pool_state *pool, *next;
+	struct dev_cgroup_pool_state *pool, *next;
 
 	spin_lock(&drmcg_lock);
 	list_for_each_entry_safe(pool, next, &drmcs->pools, css_node) {
@@ -187,10 +187,10 @@ drmcs_alloc(struct cgroup_subsys_state *parent_css)
 	return &drmcs->css;
 }
 
-static struct drmcgroup_pool_state *
+static struct dev_cgroup_pool_state *
 find_cg_pool_locked(struct drmcgroup_state *drmcs, struct drmcg_device *dev)
 {
-	struct drmcgroup_pool_state *pool;
+	struct dev_cgroup_pool_state *pool;
 
 	list_for_each_entry_rcu(pool, &drmcs->pools, css_node, spin_locked(&drmcg_lock))
 		if (pool->device == dev)
@@ -199,7 +199,7 @@ find_cg_pool_locked(struct drmcgroup_state *drmcs, struct drmcg_device *dev)
 	return NULL;
 }
 
-static struct drmcgroup_pool_state *pool_parent(struct drmcgroup_pool_state *pool)
+static struct dev_cgroup_pool_state *pool_parent(struct dev_cgroup_pool_state *pool)
 {
 	if (!pool->resources[0].cnt.parent)
 		return NULL;
@@ -207,14 +207,13 @@ static struct drmcgroup_pool_state *pool_parent(struct drmcgroup_pool_state *poo
 	return container_of(pool->resources[0].cnt.parent, typeof(*pool), resources[0].cnt);
 }
 
-bool drmcs_evict_valuable(struct drmcgroup_device *dev,
-			  int index,
-			  struct drmcgroup_pool_state *limit,
-			  struct drmcgroup_pool_state *test,
-			  bool ignore_low,
-			  bool *hit_low)
+bool dev_cgroup_state_evict_valuable(struct dev_cgroup_device *dev, int index,
+				     struct dev_cgroup_pool_state *limit,
+				     struct dev_cgroup_pool_state *test,
+				     bool ignore_low,
+				     bool *hit_low)
 {
-	struct drmcgroup_pool_state *pool = test;
+	struct dev_cgroup_pool_state *pool = test;
 	struct page_counter *climit, *ctest;
 	u64 used, min, low;
 
@@ -261,18 +260,18 @@ bool drmcs_evict_valuable(struct drmcgroup_device *dev,
 	}
 	return true;
 }
-EXPORT_SYMBOL_GPL(drmcs_evict_valuable);
+EXPORT_SYMBOL_GPL(dev_cgroup_state_evict_valuable);
 
-static struct drmcgroup_pool_state *
+static struct dev_cgroup_pool_state *
 alloc_pool_single(struct drmcgroup_state *drmcs, struct drmcg_device *dev,
-		  struct drmcgroup_pool_state **allocpool)
+		  struct dev_cgroup_pool_state **allocpool)
 {
 	struct drmcgroup_state *parent = parent_drmcg(drmcs);
-	struct drmcgroup_pool_state *pool, *ppool = NULL;
+	struct dev_cgroup_pool_state *pool, *ppool = NULL;
 	int i;
 
 	if (!*allocpool) {
-		pool = kzalloc(offsetof(struct drmcgroup_pool_state, resources[dev->base.num_regions]), GFP_NOWAIT);
+		pool = kzalloc(offsetof(struct dev_cgroup_pool_state, resources[dev->base.num_regions]), GFP_NOWAIT);
 		if (!pool)
 			return ERR_PTR(-ENOMEM);
 	} else {
@@ -301,11 +300,11 @@ alloc_pool_single(struct drmcgroup_state *drmcs, struct drmcg_device *dev,
 	return pool;
 }
 
-static struct drmcgroup_pool_state *
+static struct dev_cgroup_pool_state *
 get_cg_pool_locked(struct drmcgroup_state *drmcs, struct drmcg_device *dev,
-		   struct drmcgroup_pool_state **allocpool)
+		   struct dev_cgroup_pool_state **allocpool)
 {
-	struct drmcgroup_pool_state *pool, *ppool, *retpool;
+	struct dev_cgroup_pool_state *pool, *ppool, *retpool;
 	struct drmcgroup_state *p, *pp;
 	int i;
 
@@ -350,7 +349,7 @@ get_cg_pool_locked(struct drmcgroup_state *drmcs, struct drmcg_device *dev,
 static void drmcg_free_rcu(struct rcu_head *rcu)
 {
 	struct drmcg_device *dev = container_of(rcu, typeof(*dev), rcu);
-	struct drmcgroup_pool_state *pool, *next;
+	struct dev_cgroup_pool_state *pool, *next;
 
 	list_for_each_entry_safe(pool, next, &dev->pools, dev_node)
 		free_cg_pool(pool);
@@ -365,7 +364,7 @@ static void drmcg_free_device(struct kref *ref)
 	call_rcu(&cgdev->rcu, drmcg_free_rcu);
 }
 
-void drmcg_unregister_device(struct drmcgroup_device *cgdev)
+void dev_cgroup_unregister_device(struct dev_cgroup_device *cgdev)
 {
 	struct drmcg_device *dev;
 	struct list_head *entry;
@@ -382,7 +381,7 @@ void drmcg_unregister_device(struct drmcgroup_device *cgdev)
 	list_del_rcu(&dev->dev_node);
 
 	list_for_each_rcu(entry, &dev->pools) {
-		struct drmcgroup_pool_state *pool =
+		struct dev_cgroup_pool_state *pool =
 			container_of(entry, typeof(*pool), dev_node);
 
 		list_del_rcu(&pool->css_node);
@@ -399,10 +398,10 @@ void drmcg_unregister_device(struct drmcgroup_device *cgdev)
 	kref_put(&dev->ref, drmcg_free_device);
 }
 
-EXPORT_SYMBOL_GPL(drmcg_unregister_device);
+EXPORT_SYMBOL_GPL(dev_cgroup_unregister_device);
 
-int drmcg_register_device(struct drmcgroup_device *cgdev,
-			  const char *name)
+int dev_cgroup_register_device(struct dev_cgroup_device *cgdev,
+			       const char *name)
 {
 	struct drmcg_device *dev;
 	char *dev_name;
@@ -433,7 +432,7 @@ int drmcg_register_device(struct drmcgroup_device *cgdev,
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(drmcg_register_device);
+EXPORT_SYMBOL_GPL(dev_cgroup_register_device);
 
 static struct drmcg_device *drmcg_get_device(const char *name)
 {
@@ -447,17 +446,17 @@ static struct drmcg_device *drmcg_get_device(const char *name)
 	return NULL;
 }
 
-void drmcs_pool_put(struct drmcgroup_pool_state *pool)
+void dev_cgroup_pool_state_put(struct dev_cgroup_pool_state *pool)
 {
 	if (pool)
 		css_put(&pool->cs->css);
 }
-EXPORT_SYMBOL_GPL(drmcs_pool_put);
+EXPORT_SYMBOL_GPL(dev_cgroup_pool_state_put);
 
-static struct drmcgroup_pool_state *
+static struct dev_cgroup_pool_state *
 get_cg_pool_unlocked(struct drmcgroup_state *cg, struct drmcg_device *dev)
 {
-	struct drmcgroup_pool_state *pool, *allocpool = NULL;
+	struct dev_cgroup_pool_state *pool, *allocpool = NULL;
 
 	/* fastpath lookup? */
 	rcu_read_lock();
@@ -479,7 +478,7 @@ get_cg_pool_unlocked(struct drmcgroup_state *cg, struct drmcg_device *dev)
 			if (WARN_ON(allocpool))
 				continue;
 
-			allocpool = kzalloc(offsetof(struct drmcgroup_pool_state, resources[dev->base.num_regions]), GFP_KERNEL);
+			allocpool = kzalloc(offsetof(struct dev_cgroup_pool_state, resources[dev->base.num_regions]), GFP_KERNEL);
 			if (allocpool) {
 				pool = NULL;
 				continue;
@@ -491,10 +490,10 @@ get_cg_pool_unlocked(struct drmcgroup_state *cg, struct drmcg_device *dev)
 	return pool;
 }
 
-void drmcg_uncharge(struct drmcgroup_pool_state *pool,
-		    u32 index, u64 size)
+void dev_cgroup_uncharge(struct dev_cgroup_pool_state *pool,
+			 u32 index, u64 size)
 {
-	struct drmcgroup_device *cgdev;
+	struct dev_cgroup_device *cgdev;
 
 	if (!pool)
 		return;
@@ -506,16 +505,16 @@ void drmcg_uncharge(struct drmcgroup_pool_state *pool,
 	page_counter_uncharge(&pool->resources[index].cnt, size);
 	css_put(&pool->cs->css);
 }
-EXPORT_SYMBOL_GPL(drmcg_uncharge);
+EXPORT_SYMBOL_GPL(dev_cgroup_uncharge);
 
-int drmcg_try_charge(struct drmcgroup_device *dev,
-		     u32 index, u64 size,
-		     struct drmcgroup_pool_state **drmcs,
-		     struct drmcgroup_pool_state **limitcs)
+int dev_cgroup_try_charge(struct dev_cgroup_device *dev,
+			  u32 index, u64 size,
+			  struct dev_cgroup_pool_state **drmcs,
+			  struct dev_cgroup_pool_state **limitcs)
 {
 	struct drmcg_device *cgdev = dev->priv;
 	struct drmcgroup_state *cg;
-	struct drmcgroup_pool_state *pool;
+	struct dev_cgroup_pool_state *pool;
 	struct page_counter *fail;
 	int ret;
 
@@ -544,7 +543,7 @@ int drmcg_try_charge(struct drmcgroup_device *dev,
 
 	if (!page_counter_try_charge(&pool->resources[index].cnt, size, &fail)) {
 		if (limitcs) {
-			*limitcs = container_of(fail, struct drmcgroup_pool_state, resources[index].cnt);
+			*limitcs = container_of(fail, struct dev_cgroup_pool_state, resources[index].cnt);
 			css_get(&(*limitcs)->cs->css);
 		}
 		ret = -EAGAIN;
@@ -559,7 +558,7 @@ err:
 	css_put(&cg->css);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(drmcg_try_charge);
+EXPORT_SYMBOL_GPL(dev_cgroup_try_charge);
 
 static int drmcg_capacity_show(struct seq_file *sf, void *v)
 {
@@ -648,17 +647,17 @@ static int drmcg_parse_limits(char *options, struct drmcg_device *dev,
 
 static ssize_t drmcg_limit_write(struct kernfs_open_file *of,
 				 char *buf, size_t nbytes, loff_t off,
-				 void (*apply)(struct drmcgroup_pool_state *, int, u64))
+				 void (*apply)(struct dev_cgroup_pool_state *, int, u64))
 {
 	struct drmcgroup_state *drmcs = css_to_drmcs(of_css(of));
 	int err = 0;
 
 	while (buf && !err) {
-		struct drmcgroup_pool_state *pool = NULL;
+		struct dev_cgroup_pool_state *pool = NULL;
 		char *options, *dev_name;
 		unsigned long set_mask = 0;
 		struct drmcg_device *dev;
-		u64 new_limits[DRMCG_MAX_REGIONS];
+		u64 new_limits[DEVICE_CGROUP_MAX_REGIONS];
 		int i;
 
 		options = buf;
@@ -694,7 +693,7 @@ static ssize_t drmcg_limit_write(struct kernfs_open_file *of,
 		}
 
 		/* And commit */
-		for_each_set_bit(i, &set_mask, DRMCG_MAX_REGIONS)
+		for_each_set_bit(i, &set_mask, DEVICE_CGROUP_MAX_REGIONS)
 			apply(pool, i, new_limits[i]);
 
 out_put:
@@ -706,14 +705,14 @@ out_put:
 }
 
 static int drmcg_limit_show(struct seq_file *sf, void *v,
-			    u64 (*fn)(struct drmcgroup_pool_state *, int))
+			    u64 (*fn)(struct dev_cgroup_pool_state *, int))
 {
 	struct drmcgroup_state *drmcs = css_to_drmcs(seq_css(sf));
 	struct drmcg_device *dev;
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(dev, &drmcg_devices, dev_node) {
-		struct drmcgroup_pool_state *pool = find_cg_pool_locked(drmcs, dev);
+		struct dev_cgroup_pool_state *pool = find_cg_pool_locked(drmcs, dev);
 
 		seq_puts(sf, dev->name);
 

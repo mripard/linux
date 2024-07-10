@@ -9,20 +9,20 @@
 #include <linux/types.h>
 #include <linux/llist.h>
 
-struct drmcgroup_pool_state;
+struct dev_cgroup_pool_state;
 
 /*
  * Use 8 as max, because of N^2 lookup when setting things, can be bumped if needed
  * Identical to TTM_NUM_MEM_TYPES to allow simplifying that code.
  */
-#define DRMCG_MAX_REGIONS 8
+#define DEVICE_CGROUP_MAX_REGIONS 8
 
 /* Public definition of cgroup device, should not be modified after _register() */
-struct drmcgroup_device {
+struct dev_cgroup_device {
 	struct {
 		u64 size;
 		const char *name;
-	} regions[DRMCG_MAX_REGIONS];
+	} regions[DEVICE_CGROUP_MAX_REGIONS];
 
 	int num_regions;
 
@@ -31,39 +31,37 @@ struct drmcgroup_device {
 };
 
 #if IS_ENABLED(CONFIG_CGROUP_DEV)
-int drmcg_register_device(struct drmcgroup_device *drm_cg,
-			  const char *name);
-void drmcg_unregister_device(struct drmcgroup_device *cgdev);
-int drmcg_try_charge(struct drmcgroup_device *cgdev,
-		     u32 index, u64 size,
-		     struct drmcgroup_pool_state **drmcs,
-		     struct drmcgroup_pool_state **limitcs);
-void drmcg_uncharge(struct drmcgroup_pool_state *drmcs,
-		    u32 index, u64 size);
-bool drmcs_evict_valuable(struct drmcgroup_device *dev,
-			  int index,
-			  struct drmcgroup_pool_state *limitcs,
-			  struct drmcgroup_pool_state *testcs,
-			  bool ignore_low,
-			  bool *hit_low);
+int dev_cgroup_register_device(struct dev_cgroup_device *drm_cg,
+			       const char *name);
+void dev_cgroup_unregister_device(struct dev_cgroup_device *cgdev);
+int dev_cgroup_try_charge(struct dev_cgroup_device *cgdev,
+			  u32 index, u64 size,
+			  struct dev_cgroup_pool_state **drmcs,
+			  struct dev_cgroup_pool_state **limitcs);
+void dev_cgroup_uncharge(struct dev_cgroup_pool_state *drmcs,
+			 u32 index, u64 size);
+bool dev_cgroup_state_evict_valuable(struct dev_cgroup_device *dev, int index,
+				     struct dev_cgroup_pool_state *limitcs,
+				     struct dev_cgroup_pool_state *testcs,
+				     bool ignore_low, bool *hit_low);
 
-void drmcs_pool_put(struct drmcgroup_pool_state *drmcs);
+void dev_cgroup_pool_state_put(struct dev_cgroup_pool_state *drmcs);
 #else
 static inline int
-drmcg_register_device(struct drmcgroup_device *drm_cg,
-		      const char *name)
+dev_cgroup_register_device(struct dev_cgroup_device *drm_cg,
+			   const char *name)
 {
 	return 0;
 }
 
-static inline void drmcg_unregister_device(struct drmcgroup_device *cgdev)
+static inline void dev_cgroup_unregister_device(struct dev_cgroup_device *cgdev)
 {
 }
 
-static int int drmcg_try_charge(struct drmcgroup_device *cgdev,
-				u32 index, u64 size,
-				struct drmcgroup_pool_state **drmcs,
-				struct drmcgroup_pool_state **limitcs);
+static int int dev_cgroup_try_charge(struct dev_cgroup_device *cgdev,
+				     u32 index, u64 size,
+				     struct dev_cgroup_pool_state **drmcs,
+				     struct dev_cgroup_pool_state **limitcs);
 {
 	*drmcs = NULL;
 	if (limitcs)
@@ -71,20 +69,20 @@ static int int drmcg_try_charge(struct drmcgroup_device *cgdev,
 	return 0;
 }
 
-static inline void drmcg_uncharge(struct drmcgroup_pool_state *drmcs,
-				  u32 index, u64 size)
+static inline void dev_cgroup_uncharge(struct dev_cgroup_pool_state *drmcs,
+				       u32 index, u64 size)
 { }
 
-static inline bool drmcs_evict_valuable(struct drmcgroup_device *dev,
-					int index,
-					struct drmcgroup_pool_state *limitcs,
-					struct drmcgroup_pool_state *testcs,
-					bool ignore_low, bool *hit_low)
+static inline
+bool dev_cgroup_state_evict_valuable(struct dev_cgroup_device *dev, int index,
+				     struct dev_cgroup_pool_state *limitcs,
+				     struct dev_cgroup_pool_state *testcs,
+				     bool ignore_low, bool *hit_low)
 {
 	return true;
 }
 
-static inline void drmcs_pool_put(struct drmcgroup_pool_state *drmcs)
+static inline void dev_cgroup_pool_state_put(struct dev_cgroup_pool_state *drmcs)
 { }
 
 #endif
