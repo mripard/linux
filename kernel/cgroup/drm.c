@@ -16,9 +16,6 @@
 #include <linux/slab.h>
 
 #include <drm/drm_device.h>
-#include <drm/drm_drv.h>
-#include <drm/drm_file.h>
-#include <drm/drm_managed.h>
 
 struct drmcg_device {
 	spinlock_t lock;
