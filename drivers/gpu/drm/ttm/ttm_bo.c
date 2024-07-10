@@ -42,7 +42,7 @@
 #include <linux/file.h>
 #include <linux/module.h>
 #include <linux/atomic.h>
-#include <linux/cgroup_drm.h>
+#include <linux/cgroup_dev.h>
 #include <linux/dma-resv.h>
 
 #include "ttm_module.h"
