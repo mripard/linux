@@ -66,7 +66,7 @@ SUBSYS(misc)
 #endif
 
 #if IS_ENABLED(CONFIG_CGROUP_DEV)
-SUBSYS(drm)
+SUBSYS(dev)
 #endif
 
 /*

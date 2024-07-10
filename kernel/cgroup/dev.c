@@ -83,7 +83,7 @@ css_to_drmcs(struct cgroup_subsys_state *css)
 
 static inline struct drmcgroup_state *get_current_drmcg(void)
 {
-	return css_to_drmcs(task_get_css(current, drm_cgrp_id));
+	return css_to_drmcs(task_get_css(current, dev_cgrp_id));
 }
 
 static struct drmcgroup_state *parent_drmcg(struct drmcgroup_state *cg)
@@ -805,7 +805,7 @@ static struct cftype files[] = {
 	{ } /* Zero entry terminates. */
 };
 
-struct cgroup_subsys drm_cgrp_subsys = {
+struct cgroup_subsys dev_cgrp_subsys = {
 	.css_alloc	= drmcs_alloc,
 	.css_free	= drmcs_free,
 	.css_offline	= drmcs_offline,
