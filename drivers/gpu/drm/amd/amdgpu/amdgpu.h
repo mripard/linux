@@ -43,7 +43,7 @@
 #include "amdgpu_ctx.h"
 
 #include <linux/atomic.h>
-#include <linux/cgroup_drm.h>
+#include <linux/cgroup_dev.h>
 #include <linux/wait.h>
 #include <linux/list.h>
 #include <linux/kref.h>
