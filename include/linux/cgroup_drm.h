@@ -30,7 +30,7 @@ struct drmcgroup_device {
 	void *priv;
 };
 
-#if IS_ENABLED(CONFIG_CGROUP_DRM)
+#if IS_ENABLED(CONFIG_CGROUP_DEV)
 int drmcg_register_device(struct drmcgroup_device *drm_cg,
 			  const char *name);
 void drmcg_unregister_device(struct drmcgroup_device *cgdev);

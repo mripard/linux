@@ -1105,10 +1105,10 @@ config CGROUP_RDMA
 	  Attaching processes with active RDMA resources to the cgroup
 	  hierarchy is allowed even if can cross the hierarchy's limit.
 
-config CGROUP_DRM
-	bool "DRM controller"
+config CGROUP_DEV
+	bool "Device controller"
 	help
-	  Provides the DRM subsystem controller.
+	  Provides the device subsystem controller.
 
 	  ...
 
