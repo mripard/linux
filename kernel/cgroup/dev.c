@@ -8,7 +8,7 @@
  */
 
 #include <linux/cgroup.h>
-#include <linux/cgroup_drm.h>
+#include <linux/cgroup_dev.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
 #include <linux/page_counter.h>

@@ -3,8 +3,8 @@
  * Copyright © 2023 Intel Corporation
  */
 
-#ifndef _CGROUP_DRM_H
-#define _CGROUP_DRM_H
+#ifndef _CGROUP_DEV_H
+#define _CGROUP_DEV_H
 
 #include <linux/types.h>
 #include <linux/llist.h>
@@ -88,4 +88,4 @@ static inline void drmcs_pool_put(struct drmcgroup_pool_state *drmcs)
 { }
 
 #endif
-#endif	/* _CGROUP_DRM_H */
+#endif	/* _CGROUP_DEV_H */
