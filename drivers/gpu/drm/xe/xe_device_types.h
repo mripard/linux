@@ -7,7 +7,7 @@
 #define _XE_DEVICE_TYPES_H_
 
 #include <linux/pci.h>
-#include <linux/cgroup_drm.h>
+#include <linux/cgroup_dev.h>
 
 #include <drm/drm_device.h>
 #include <drm/drm_file.h>
