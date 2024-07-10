@@ -222,7 +222,7 @@ struct xe_device {
 	struct xe_devcoredump devcoredump;
 
 	/** @cg: drm cgroup bookkeeping */
-	struct drmcgroup_device cg;
+	struct dev_cgroup_device cg;
 
 	/** @info: device info */
 	struct intel_device_info {
