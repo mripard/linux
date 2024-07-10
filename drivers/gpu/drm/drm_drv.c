@@ -825,17 +825,17 @@ EXPORT_SYMBOL(drm_dev_put);
 
 static inline void drmm_cg_unregister_device(struct drm_device *dev, void *arg)
 {
-	drmcg_unregister_device(arg);
+	dev_cgroup_unregister_device(arg);
 }
 
 int drmm_cgroup_register_device(struct drm_device *dev,
-				struct drmcgroup_device *cgdev)
+				struct dev_cgroup_device *cgdev)
 {
 	char dev_name[32];
 	int ret;
 
 	snprintf(dev_name, sizeof(dev_name), "drm/%s", dev->unique);
-	ret = drmcg_register_device(cgdev, dev_name);
+	ret = dev_cgroup_register_device(cgdev, dev_name);
 	if (ret)
 		return ret;
 
