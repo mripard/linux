@@ -26,7 +26,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include <linux/cgroup_drm.h>
+#include <linux/cgroup_dev.h>
 #include <linux/debugfs.h>
 #include <linux/fs.h>
 #include <linux/module.h>
