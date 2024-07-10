@@ -493,10 +493,15 @@ get_cg_pool_unlocked(struct drmcgroup_state *cg, struct drmcg_device *dev)
 }
 
 void drmcg_uncharge(struct drmcgroup_pool_state *pool,
-		    struct drmcgroup_device *cgdev,
 		    u32 index, u64 size)
 {
-	if (index >= cgdev->num_regions || !pool)
+	struct drmcgroup_device *cgdev;
+
+	if (!pool)
+		return;
+
+	cgdev = &pool->device->base;
+	if (index >= cgdev->num_regions)
 		return;
 
 	page_counter_uncharge(&pool->resources[index].cnt, size);

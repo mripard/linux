@@ -41,7 +41,6 @@ int drmcg_try_charge(struct drmcgroup_device *cgdev,
 		     struct drmcgroup_pool_state **drmcs,
 		     struct drmcgroup_pool_state **limitcs);
 void drmcg_uncharge(struct drmcgroup_pool_state *drmcs,
-		    struct drmcgroup_device *cgdev,
 		    u32 index, u64 size);
 bool drmcs_evict_valuable(struct drmcgroup_device *dev,
 			  int index,
@@ -75,7 +74,6 @@ static int int drmcg_try_charge(struct drmcgroup_device *cgdev,
 }
 
 static inline void drmcg_uncharge(struct drmcgroup_pool_state *drmcs,
-				  struct drmcgroup_device *cgdev,
 				  u32 index, u64 size)
 { }
 
