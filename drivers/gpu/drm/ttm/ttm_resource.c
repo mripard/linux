@@ -26,7 +26,7 @@
 #include <linux/io-mapping.h>
 #include <linux/iosys-map.h>
 #include <linux/scatterlist.h>
-#include <linux/cgroup_drm.h>
+#include <linux/cgroup_dev.h>
 
 #include <drm/ttm/ttm_bo.h>
 #include <drm/ttm/ttm_placement.h>
