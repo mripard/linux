@@ -209,9 +209,9 @@ static struct drmcgroup_pool_state *pool_parent(struct drmcgroup_pool_state *poo
 	return container_of(pool->resources[0].cnt.parent, typeof(*pool), resources[0].cnt);
 }
 
-bool drmcs_evict_valuable(struct drmcgroup_pool_state *limit,
-			  struct drmcgroup_device *dev,
+bool drmcs_evict_valuable(struct drmcgroup_device *dev,
 			  int index,
+			  struct drmcgroup_pool_state *limit,
 			  struct drmcgroup_pool_state *test,
 			  bool ignore_low,
 			  bool *hit_low)
@@ -403,8 +403,8 @@ void drmcg_unregister_device(struct drmcgroup_device *cgdev)
 
 EXPORT_SYMBOL_GPL(drmcg_unregister_device);
 
-int drmcg_register_device(struct drm_device *drm_dev,
-			  struct drmcgroup_device *cgdev)
+int drmcg_register_device(struct drmcgroup_device *cgdev,
+			  struct drm_device *drm_dev)
 {
 	struct drmcg_device *dev;
 	char *name;
@@ -504,10 +504,10 @@ void drmcg_uncharge(struct drmcgroup_pool_state *pool,
 }
 EXPORT_SYMBOL_GPL(drmcg_uncharge);
 
-int drmcg_try_charge(struct drmcgroup_pool_state **drmcs,
-		     struct drmcgroup_pool_state **limitcs,
-		     struct drmcgroup_device *dev,
-		     u32 index, u64 size)
+int drmcg_try_charge(struct drmcgroup_device *dev,
+		     u32 index, u64 size,
+		     struct drmcgroup_pool_state **drmcs,
+		     struct drmcgroup_pool_state **limitcs)
 {
 	struct drmcg_device *cgdev = dev->priv;
 	struct drmcgroup_state *cg;

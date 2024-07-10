@@ -33,20 +33,19 @@ struct drmcgroup_device {
 };
 
 #if IS_ENABLED(CONFIG_CGROUP_DRM)
-int drmcg_register_device(struct drm_device *dev,
-			   struct drmcgroup_device *drm_cg);
+int drmcg_register_device(struct drmcgroup_device *drm_cg,
+			  struct drm_device *dev);
 void drmcg_unregister_device(struct drmcgroup_device *cgdev);
-int drmcg_try_charge(struct drmcgroup_pool_state **drmcs,
-		     struct drmcgroup_pool_state **limitcs,
-		     struct drmcgroup_device *cgdev,
-		     u32 index, u64 size);
+int drmcg_try_charge(struct drmcgroup_device *cgdev,
+		     u32 index, u64 size,
+		     struct drmcgroup_pool_state **drmcs,
+		     struct drmcgroup_pool_state **limitcs);
 void drmcg_uncharge(struct drmcgroup_pool_state *drmcs,
 		    struct drmcgroup_device *cgdev,
 		    u32 index, u64 size);
-
-bool drmcs_evict_valuable(struct drmcgroup_pool_state *limitcs,
-			  struct drmcgroup_device *dev,
+bool drmcs_evict_valuable(struct drmcgroup_device *dev,
 			  int index,
+			  struct drmcgroup_pool_state *limitcs,
 			  struct drmcgroup_pool_state *testcs,
 			  bool ignore_low,
 			  bool *hit_low);
@@ -54,8 +53,8 @@ bool drmcs_evict_valuable(struct drmcgroup_pool_state *limitcs,
 void drmcs_pool_put(struct drmcgroup_pool_state *drmcs);
 #else
 static inline int
-drmcg_register_device(struct drm_device *dev,
-		      struct drmcgroup_device *drm_cg)
+drmcg_register_device(struct drmcgroup_device *drm_cg,
+		      struct drm_device *dev)
 {
 	return 0;
 }
@@ -64,10 +63,10 @@ static inline void drmcg_unregister_device(struct drmcgroup_device *cgdev)
 {
 }
 
-static inline int drmcg_try_charge(struct drmcgroup_pool_state **drmcs,
-				   struct drmcgroup_pool_state **limitcs,
-				   struct drmcgroup_device *cgdev,
-				   u32 index, u64 size)
+static int int drmcg_try_charge(struct drmcgroup_device *cgdev,
+				u32 index, u64 size,
+				struct drmcgroup_pool_state **drmcs,
+				struct drmcgroup_pool_state **limitcs);
 {
 	*drmcs = NULL;
 	if (limitcs)
@@ -80,8 +79,9 @@ static inline void drmcg_uncharge(struct drmcgroup_pool_state *drmcs,
 				  u32 index, u64 size)
 { }
 
-static inline bool drmcs_evict_valuable(struct drmcgroup_pool_state *limitcs,
-					struct drmcgroup_device *dev, int index,
+static inline bool drmcs_evict_valuable(struct drmcgroup_device *dev,
+					int index,
+					struct drmcgroup_pool_state *limitcs,
 					struct drmcgroup_pool_state *testcs,
 					bool ignore_low, bool *hit_low)
 {
