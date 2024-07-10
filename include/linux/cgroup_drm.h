@@ -9,8 +9,6 @@
 #include <linux/types.h>
 #include <linux/llist.h>
 
-#include <drm/drm_managed.h>
-
 struct drm_device;
 
 struct drmcgroup_pool_state;
@@ -94,21 +92,4 @@ static inline void drmcs_pool_put(struct drmcgroup_pool_state *drmcs)
 { }
 
 #endif
-
-static inline void drmmcg_unregister_device(struct drm_device *dev, void *arg)
-{
-	drmcg_unregister_device(arg);
-}
-
-/*
- * This needs to be done as inline, because cgroup lives in the core
- * kernel and it cannot call drm calls directly
- */
-static inline int drmmcg_register_device(struct drm_device *dev,
-					 struct drmcgroup_device *cgdev)
-{
-	return drmcg_register_device(dev, cgdev) ?:
-		drmm_add_action_or_reset(dev, drmmcg_unregister_device, cgdev);
-}
-
 #endif	/* _CGROUP_DRM_H */
