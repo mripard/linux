@@ -248,8 +248,7 @@ int ttm_resource_alloc(struct ttm_buffer_object *bo,
 	ret = man->func->alloc(man, bo, place, res_ptr);
 	if (ret) {
 		if (drmcs)
-			drmcg_uncharge(drmcs, man->cgdev, man->cgidx,
-				       bo->base.size);
+			drmcg_uncharge(drmcs, man->cgidx, bo->base.size);
 		return ret;
 	}
 
@@ -279,7 +278,7 @@ void ttm_resource_free(struct ttm_buffer_object *bo, struct ttm_resource **res)
 	man->func->free(man, *res);
 	*res = NULL;
 	if (man->cgdev)
-		drmcg_uncharge(css, man->cgdev, man->cgidx, bo->base.size);
+		drmcg_uncharge(css, man->cgidx, bo->base.size);
 }
 EXPORT_SYMBOL(ttm_resource_free);
 
