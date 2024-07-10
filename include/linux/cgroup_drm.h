@@ -9,8 +9,6 @@
 #include <linux/types.h>
 #include <linux/llist.h>
 
-struct drm_device;
-
 struct drmcgroup_pool_state;
 
 /*
@@ -34,7 +32,7 @@ struct drmcgroup_device {
 
 #if IS_ENABLED(CONFIG_CGROUP_DRM)
 int drmcg_register_device(struct drmcgroup_device *drm_cg,
-			  struct drm_device *dev);
+			  const char *name);
 void drmcg_unregister_device(struct drmcgroup_device *cgdev);
 int drmcg_try_charge(struct drmcgroup_device *cgdev,
 		     u32 index, u64 size,
@@ -53,7 +51,7 @@ void drmcs_pool_put(struct drmcgroup_pool_state *drmcs);
 #else
 static inline int
 drmcg_register_device(struct drmcgroup_device *drm_cg,
-		      struct drm_device *dev)
+		      const char *name)
 {
 	return 0;
 }

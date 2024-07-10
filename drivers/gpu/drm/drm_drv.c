@@ -833,7 +833,7 @@ int drmm_cgroup_register_device(struct drm_device *dev,
 {
 	int ret;
 
-	ret = drmcg_register_device(cgdev, dev);
+	ret = drmcg_register_device(cgdev, dev->unique);
 	if (ret)
 		return ret;
 

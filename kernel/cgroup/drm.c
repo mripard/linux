@@ -15,8 +15,6 @@
 #include <linux/parser.h>
 #include <linux/slab.h>
 
-#include <drm/drm_device.h>
-
 struct drmcg_device {
 	spinlock_t lock;
 	struct kref ref;
@@ -404,10 +402,10 @@ void drmcg_unregister_device(struct drmcgroup_device *cgdev)
 EXPORT_SYMBOL_GPL(drmcg_unregister_device);
 
 int drmcg_register_device(struct drmcgroup_device *cgdev,
-			  struct drm_device *drm_dev)
+			  const char *name)
 {
 	struct drmcg_device *dev;
-	char *name;
+	char *dev_name;
 
 	cgdev->priv = NULL;
 	if (!cgdev->num_regions)
@@ -416,15 +414,16 @@ int drmcg_register_device(struct drmcgroup_device *cgdev,
 	cgdev->priv = dev = kzalloc(sizeof (*dev), GFP_KERNEL);
 	if (!dev)
 		return -ENOMEM;
-	name = kstrdup(drm_dev->unique, GFP_KERNEL);
-	if (!name) {
+
+	dev_name = kstrdup(name, GFP_KERNEL);
+	if (!dev_name) {
 		kfree(dev);
 		cgdev->priv = NULL;
 		return -ENOMEM;
 	}
 
 	INIT_LIST_HEAD(&dev->pools);
-	dev->name = name;
+	dev->name = dev_name;
 	dev->base = *cgdev;
 	kref_init(&dev->ref);
 
