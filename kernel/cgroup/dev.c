@@ -433,7 +433,7 @@ int dev_cgroup_register_device(struct dev_cgroup_device *cgdev,
 }
 EXPORT_SYMBOL_GPL(dev_cgroup_register_device);
 
-static struct devcg_device *devcg_get_device(const char *name)
+static struct devcg_device *devcg_get_device_by_name(const char *name)
 {
 	struct devcg_device *dev;
 
@@ -675,7 +675,7 @@ static ssize_t devcg_limit_write(struct kernfs_open_file *of,
 			continue;
 
 		rcu_read_lock();
-		dev = devcg_get_device(dev_name);
+		dev = devcg_get_device_by_name(dev_name);
 		rcu_read_unlock();
 
 		if (!dev)
