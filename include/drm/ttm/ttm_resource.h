@@ -38,7 +38,7 @@
 #define TTM_MAX_BO_PRIORITY	4U
 #define TTM_NUM_MEM_TYPES 8
 
-struct drmcgroup_device;
+struct dev_cgroup_device;
 struct ttm_device;
 struct ttm_resource_manager;
 struct ttm_resource;
@@ -177,9 +177,9 @@ struct ttm_resource_manager {
 	uint64_t usage;
 
 	/**
-	 * @cgdev: drmcgroup_device used for memory accounting, if not NULL.
+	 * @cgdev: dev_cgroup_device used for memory accounting, if not NULL.
 	 */
-	struct drmcgroup_device *cgdev;
+	struct dev_cgroup_device *cgdev;
 	/**
 	 * @cgidx: Resource index used by this resource manager for cgroup accounting
 	 */
@@ -225,7 +225,7 @@ struct ttm_resource {
 	struct ttm_bus_placement bus;
 	struct ttm_buffer_object *bo;
 
-	struct drmcgroup_pool_state *css;
+	struct dev_cgroup_pool_state *css;
 
 	/**
 	 * @lru: Least recently used list, see &ttm_resource_manager.lru
@@ -376,7 +376,7 @@ void ttm_resource_fini(struct ttm_resource_manager *man,
 int ttm_resource_alloc(struct ttm_buffer_object *bo,
 		       const struct ttm_place *place,
 		       struct ttm_resource **res,
-		       struct drmcgroup_pool_state **limitcs);
+		       struct dev_cgroup_pool_state **limitcs);
 void ttm_resource_free(struct ttm_buffer_object *bo, struct ttm_resource **res);
 bool ttm_resource_intersects(struct ttm_device *bdev,
 			     struct ttm_resource *res,
