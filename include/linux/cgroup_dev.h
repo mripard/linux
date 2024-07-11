@@ -43,7 +43,7 @@ void dev_cgroup_uncharge(struct dev_cgroup_pool_state *pool,
 bool dev_cgroup_state_evict_valuable(struct dev_cgroup_device *dev, int index,
 				     struct dev_cgroup_pool_state *limit_pool,
 				     struct dev_cgroup_pool_state *test_pool,
-				     bool ignore_low, bool *hit_low);
+				     bool ignore_low, bool *ret_hit_low);
 
 void dev_cgroup_pool_state_put(struct dev_cgroup_pool_state *pool);
 #else
@@ -79,7 +79,7 @@ static inline
 bool dev_cgroup_state_evict_valuable(struct dev_cgroup_device *dev, int index,
 				     struct dev_cgroup_pool_state *limit_pool,
 				     struct dev_cgroup_pool_state *test_pool,
-				     bool ignore_low, bool *hit_low)
+				     bool ignore_low, bool *ret_hit_low)
 {
 	return true;
 }

@@ -210,7 +210,7 @@ static struct dev_cgroup_pool_state *pool_parent(struct dev_cgroup_pool_state *p
 bool dev_cgroup_state_evict_valuable(struct dev_cgroup_device *dev, int index,
 				     struct dev_cgroup_pool_state *limit_pool,
 				     struct dev_cgroup_pool_state *test_pool,
-				     bool ignore_low, bool *hit_low)
+				     bool ignore_low, bool *ret_hit_low)
 {
 	struct dev_cgroup_pool_state *pool = test_pool;
 	struct page_counter *climit, *ctest;
@@ -254,7 +254,7 @@ bool dev_cgroup_state_evict_valuable(struct dev_cgroup_device *dev, int index,
 		if (used > low)
 			return true;
 
-		*hit_low = true;
+		*ret_hit_low = true;
 		return false;
 	}
 	return true;
