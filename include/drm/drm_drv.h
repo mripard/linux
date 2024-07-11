@@ -34,7 +34,7 @@
 
 #include <drm/drm_device.h>
 
-struct drmcgroup_device;
+struct dev_cgroup_device;
 
 struct drm_file;
 struct drm_gem_object;
@@ -451,7 +451,7 @@ void *__devm_drm_dev_alloc(struct device *parent,
 			   size_t size, size_t offset);
 
 int drmm_cgroup_register_device(struct drm_device *dev,
-				struct drmcgroup_device *cgdev);
+				struct dev_cgroup_device *cgdev);
 
 /**
  * devm_drm_dev_alloc - Resource managed allocation of a &drm_device instance
