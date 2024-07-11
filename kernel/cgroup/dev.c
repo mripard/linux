@@ -73,7 +73,7 @@ struct dev_cgroup_pool_state {
  * by RCU and the lockless operating page_counter.
  */
 static DEFINE_SPINLOCK(devcg_lock);
-static LIST_HEAD(drmcg_devices);
+static LIST_HEAD(devcg_devices);
 
 static inline struct drmcgroup_state *
 css_to_drmcs(struct cgroup_subsys_state *css)
@@ -427,7 +427,7 @@ int dev_cgroup_register_device(struct dev_cgroup_device *cgdev,
 	kref_init(&dev->ref);
 
 	spin_lock(&devcg_lock);
-	list_add_tail_rcu(&dev->dev_node, &drmcg_devices);
+	list_add_tail_rcu(&dev->dev_node, &devcg_devices);
 	spin_unlock(&devcg_lock);
 
 	return 0;
@@ -438,7 +438,7 @@ static struct drmcg_device *drmcg_get_device(const char *name)
 {
 	struct drmcg_device *dev;
 
-	list_for_each_entry_rcu(dev, &drmcg_devices, dev_node, spin_locked(&devcg_lock))
+	list_for_each_entry_rcu(dev, &devcg_devices, dev_node, spin_locked(&devcg_lock))
 		if (!strcmp(name, dev->name) &&
 		    kref_get_unless_zero(&dev->ref))
 			return dev;
@@ -566,7 +566,7 @@ static int drmcg_capacity_show(struct seq_file *sf, void *v)
 	int i;
 
 	rcu_read_lock();
-	list_for_each_entry_rcu(dev, &drmcg_devices, dev_node) {
+	list_for_each_entry_rcu(dev, &devcg_devices, dev_node) {
 		seq_puts(sf, dev->name);
 		for (i = 0; i < dev->base.num_regions; i++)
 			seq_printf(sf, " region.%s=%llu",
@@ -711,7 +711,7 @@ static int drmcg_limit_show(struct seq_file *sf, void *v,
 	struct drmcg_device *dev;
 
 	rcu_read_lock();
-	list_for_each_entry_rcu(dev, &drmcg_devices, dev_node) {
+	list_for_each_entry_rcu(dev, &devcg_devices, dev_node) {
 		struct dev_cgroup_pool_state *pool = find_cg_pool_locked(drmcs, dev);
 
 		seq_puts(sf, dev->name);
