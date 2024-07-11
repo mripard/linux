@@ -346,7 +346,7 @@ get_cg_pool_locked(struct devcg_state *drmcs, struct devcg_device *dev,
 	return retpool;
 }
 
-static void drmcg_free_rcu(struct rcu_head *rcu)
+static void devcg_free_rcu(struct rcu_head *rcu)
 {
 	struct devcg_device *dev = container_of(rcu, typeof(*dev), rcu);
 	struct dev_cgroup_pool_state *pool, *next;
@@ -357,11 +357,11 @@ static void drmcg_free_rcu(struct rcu_head *rcu)
 	kfree(dev);
 }
 
-static void drmcg_free_device(struct kref *ref)
+static void devcg_free_device(struct kref *ref)
 {
 	struct devcg_device *cgdev = container_of(ref, typeof(*cgdev), ref);
 
-	call_rcu(&cgdev->rcu, drmcg_free_rcu);
+	call_rcu(&cgdev->rcu, devcg_free_rcu);
 }
 
 void dev_cgroup_unregister_device(struct dev_cgroup_device *cgdev)
@@ -395,7 +395,7 @@ void dev_cgroup_unregister_device(struct dev_cgroup_device *cgdev)
 	dev->unregistered = true;
 	spin_unlock(&devcg_lock);
 
-	kref_put(&dev->ref, drmcg_free_device);
+	kref_put(&dev->ref, devcg_free_device);
 }
 
 EXPORT_SYMBOL_GPL(dev_cgroup_unregister_device);
@@ -434,7 +434,7 @@ int dev_cgroup_register_device(struct dev_cgroup_device *cgdev,
 }
 EXPORT_SYMBOL_GPL(dev_cgroup_register_device);
 
-static struct devcg_device *drmcg_get_device(const char *name)
+static struct devcg_device *devcg_get_device(const char *name)
 {
 	struct devcg_device *dev;
 
@@ -560,7 +560,7 @@ err:
 }
 EXPORT_SYMBOL_GPL(dev_cgroup_try_charge);
 
-static int drmcg_capacity_show(struct seq_file *sf, void *v)
+static int devcg_capacity_show(struct seq_file *sf, void *v)
 {
 	struct devcg_device *dev;
 	int i;
@@ -617,7 +617,7 @@ static s64 parse_resource(char *c, char **retname)
 	return -EINVAL;
 }
 
-static int drmcg_parse_limits(char *options, struct devcg_device *dev,
+static int devcg_parse_limits(char *options, struct devcg_device *dev,
 			      u64 *new_limits, unsigned long *set_mask)
 {
 	char *c, *region;
@@ -645,7 +645,7 @@ static int drmcg_parse_limits(char *options, struct devcg_device *dev,
 	return 0;
 }
 
-static ssize_t drmcg_limit_write(struct kernfs_open_file *of,
+static ssize_t devcg_limit_write(struct kernfs_open_file *of,
 				 char *buf, size_t nbytes, loff_t off,
 				 void (*apply)(struct dev_cgroup_pool_state *, int, u64))
 {
@@ -676,13 +676,13 @@ static ssize_t drmcg_limit_write(struct kernfs_open_file *of,
 			continue;
 
 		rcu_read_lock();
-		dev = drmcg_get_device(dev_name);
+		dev = devcg_get_device(dev_name);
 		rcu_read_unlock();
 
 		if (!dev)
 			return -EINVAL;
 
-		err = drmcg_parse_limits(options, dev, new_limits, &set_mask);
+		err = devcg_parse_limits(options, dev, new_limits, &set_mask);
 		if (err < 0)
 			goto out_put;
 
@@ -697,14 +697,14 @@ static ssize_t drmcg_limit_write(struct kernfs_open_file *of,
 			apply(pool, i, new_limits[i]);
 
 out_put:
-		kref_put(&dev->ref, drmcg_free_device);
+		kref_put(&dev->ref, devcg_free_device);
 	}
 
 
 	return err ?: nbytes;
 }
 
-static int drmcg_limit_show(struct seq_file *sf, void *v,
+static int devcg_limit_show(struct seq_file *sf, void *v,
 			    u64 (*fn)(struct dev_cgroup_pool_state *, int))
 {
 	struct devcg_state *drmcs = css_to_drmcs(seq_css(sf));
@@ -735,70 +735,70 @@ static int drmcg_limit_show(struct seq_file *sf, void *v,
 	return 0;
 }
 
-static int drmcg_current_show(struct seq_file *sf, void *v)
+static int devcg_current_show(struct seq_file *sf, void *v)
 {
-	return drmcg_limit_show(sf, v, get_resource_current);
+	return devcg_limit_show(sf, v, get_resource_current);
 }
 
-static int drmcg_min_show(struct seq_file *sf, void *v)
+static int devcg_min_show(struct seq_file *sf, void *v)
 {
-	return drmcg_limit_show(sf, v, get_resource_min);
+	return devcg_limit_show(sf, v, get_resource_min);
 }
 
-static ssize_t drmcg_min_write(struct kernfs_open_file *of,
+static ssize_t devcg_min_write(struct kernfs_open_file *of,
 			       char *buf, size_t nbytes, loff_t off)
 {
-	return drmcg_limit_write(of, buf, nbytes, off, set_resource_min);
+	return devcg_limit_write(of, buf, nbytes, off, set_resource_min);
 }
 
-static int drmcg_low_show(struct seq_file *sf, void *v)
+static int devcg_low_show(struct seq_file *sf, void *v)
 {
-	return drmcg_limit_show(sf, v, get_resource_low);
+	return devcg_limit_show(sf, v, get_resource_low);
 }
 
-static ssize_t drmcg_low_write(struct kernfs_open_file *of,
+static ssize_t devcg_low_write(struct kernfs_open_file *of,
 			       char *buf, size_t nbytes, loff_t off)
 {
-	return drmcg_limit_write(of, buf, nbytes, off, set_resource_low);
+	return devcg_limit_write(of, buf, nbytes, off, set_resource_low);
 }
 
-static int drmcg_max_show(struct seq_file *sf, void *v)
+static int devcg_max_show(struct seq_file *sf, void *v)
 {
-	return drmcg_limit_show(sf, v, get_resource_max);
+	return devcg_limit_show(sf, v, get_resource_max);
 }
 
-static ssize_t drmcg_max_write(struct kernfs_open_file *of,
+static ssize_t devcg_max_write(struct kernfs_open_file *of,
 			       char *buf, size_t nbytes, loff_t off)
 {
-	return drmcg_limit_write(of, buf, nbytes, off, set_resource_max);
+	return devcg_limit_write(of, buf, nbytes, off, set_resource_max);
 }
 
 static struct cftype files[] = {
 	{
 		.name = "capacity",
-		.seq_show = drmcg_capacity_show,
+		.seq_show = devcg_capacity_show,
 		.flags = CFTYPE_ONLY_ON_ROOT,
 	},
 	{
 		.name = "current",
-		.seq_show = drmcg_current_show,
+		.seq_show = devcg_current_show,
 	},
 	{
 		.name = "min",
-		.write = drmcg_min_write,
-		.seq_show = drmcg_min_show,
+		.write = devcg_min_write,
+		.seq_show = devcg_min_show,
 		.flags = CFTYPE_NOT_ON_ROOT,
 	},
 	{
 		.name = "low",
-		.write = drmcg_low_write,
-		.seq_show = drmcg_low_show,
+		.write = devcg_low_write,
+		.seq_show = devcg_low_show,
 		.flags = CFTYPE_NOT_ON_ROOT,
 	},
 	{
 		.name = "max",
-		.write = drmcg_max_write,
-		.seq_show = drmcg_max_show,
+		.write = devcg_max_write,
+		.seq_show = devcg_max_show,
 		.flags = CFTYPE_NOT_ON_ROOT,
 	},
 	{ } /* Zero entry terminates. */
