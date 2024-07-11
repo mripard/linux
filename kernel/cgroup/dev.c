@@ -81,7 +81,7 @@ css_to_devcs(struct cgroup_subsys_state *css)
 	return container_of(css, struct devcg_state, css);
 }
 
-static inline struct devcg_state *get_current_drmcg(void)
+static inline struct devcg_state *get_current_devcs(void)
 {
 	return css_to_devcs(task_get_css(current, dev_cgrp_id));
 }
@@ -533,7 +533,7 @@ int dev_cgroup_try_charge(struct dev_cgroup_device *dev,
 	 * hold on to css, as cgroup can be removed but resource
 	 * accounting happens on css.
 	 */
-	cg = get_current_drmcg();
+	cg = get_current_devcs();
 
 	pool = get_cg_pool_unlocked(cg, cgdev);
 	if (IS_ERR(pool)) {
