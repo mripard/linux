@@ -76,19 +76,19 @@ static DEFINE_SPINLOCK(devcg_lock);
 static LIST_HEAD(devcg_devices);
 
 static inline struct devcg_state *
-css_to_drmcs(struct cgroup_subsys_state *css)
+css_to_devcs(struct cgroup_subsys_state *css)
 {
 	return container_of(css, struct devcg_state, css);
 }
 
 static inline struct devcg_state *get_current_drmcg(void)
 {
-	return css_to_drmcs(task_get_css(current, dev_cgrp_id));
+	return css_to_devcs(task_get_css(current, dev_cgrp_id));
 }
 
 static struct devcg_state *parent_drmcg(struct devcg_state *cg)
 {
-	return cg->css.parent ? css_to_drmcs(cg->css.parent) : NULL;
+	return cg->css.parent ? css_to_devcs(cg->css.parent) : NULL;
 }
 
 static void free_cg_pool(struct dev_cgroup_pool_state *pool)
@@ -146,24 +146,24 @@ static void reset_all_resource_limits(struct dev_cgroup_pool_state *rpool)
 	}
 }
 
-static void drmcs_offline(struct cgroup_subsys_state *css)
+static void devcs_offline(struct cgroup_subsys_state *css)
 {
-	struct devcg_state *drmcs = css_to_drmcs(css);
+	struct devcg_state *devcs = css_to_devcs(css);
 	struct dev_cgroup_pool_state *pool;
 
 	rcu_read_lock();
-	list_for_each_entry_rcu(pool, &drmcs->pools, css_node)
+	list_for_each_entry_rcu(pool, &devcs->pools, css_node)
 		reset_all_resource_limits(pool);
 	rcu_read_unlock();
 }
 
-static void drmcs_free(struct cgroup_subsys_state *css)
+static void devcs_free(struct cgroup_subsys_state *css)
 {
-	struct devcg_state *drmcs = css_to_drmcs(css);
+	struct devcg_state *devcs = css_to_devcs(css);
 	struct dev_cgroup_pool_state *pool, *next;
 
 	spin_lock(&devcg_lock);
-	list_for_each_entry_safe(pool, next, &drmcs->pools, css_node) {
+	list_for_each_entry_safe(pool, next, &devcs->pools, css_node) {
 		/*
 		 *The pool is dead and all references are 0,
 		 * no need for RCU protection with list_del_rcu or freeing.
@@ -173,18 +173,18 @@ static void drmcs_free(struct cgroup_subsys_state *css)
 	}
 	spin_unlock(&devcg_lock);
 
-	kfree(drmcs);
+	kfree(devcs);
 }
 
 static struct cgroup_subsys_state *
-drmcs_alloc(struct cgroup_subsys_state *parent_css)
+devcs_alloc(struct cgroup_subsys_state *parent_css)
 {
-	struct devcg_state *drmcs = kzalloc(sizeof(*drmcs), GFP_KERNEL);
-	if (!drmcs)
+	struct devcg_state *devcs = kzalloc(sizeof(*devcs), GFP_KERNEL);
+	if (!devcs)
 		return ERR_PTR(-ENOMEM);
 
-	INIT_LIST_HEAD(&drmcs->pools);
-	return &drmcs->css;
+	INIT_LIST_HEAD(&devcs->pools);
+	return &devcs->css;
 }
 
 static struct dev_cgroup_pool_state *
@@ -649,7 +649,7 @@ static ssize_t devcg_limit_write(struct kernfs_open_file *of,
 				 char *buf, size_t nbytes, loff_t off,
 				 void (*apply)(struct dev_cgroup_pool_state *, int, u64))
 {
-	struct devcg_state *drmcs = css_to_drmcs(of_css(of));
+	struct devcg_state *drmcs = css_to_devcs(of_css(of));
 	int err = 0;
 
 	while (buf && !err) {
@@ -707,7 +707,7 @@ out_put:
 static int devcg_limit_show(struct seq_file *sf, void *v,
 			    u64 (*fn)(struct dev_cgroup_pool_state *, int))
 {
-	struct devcg_state *drmcs = css_to_drmcs(seq_css(sf));
+	struct devcg_state *drmcs = css_to_devcs(seq_css(sf));
 	struct devcg_device *dev;
 
 	rcu_read_lock();
@@ -805,9 +805,9 @@ static struct cftype files[] = {
 };
 
 struct cgroup_subsys dev_cgrp_subsys = {
-	.css_alloc	= drmcs_alloc,
-	.css_free	= drmcs_free,
-	.css_offline	= drmcs_offline,
+	.css_alloc	= devcs_alloc,
+	.css_free	= devcs_free,
+	.css_offline	= devcs_offline,
 	.legacy_cftypes	= files,
 	.dfl_cftypes	= files,
 };
