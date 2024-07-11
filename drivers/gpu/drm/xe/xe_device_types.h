@@ -221,7 +221,7 @@ struct xe_device {
 	/** @devcoredump: device coredump */
 	struct xe_devcoredump devcoredump;
 
-	/** @cg: drm cgroup bookkeeping */
+	/** @cg: device cgroup bookkeeping */
 	struct dev_cgroup_device cg;
 
 	/** @info: device info */
