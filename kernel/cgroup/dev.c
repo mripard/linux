@@ -72,7 +72,7 @@ struct dev_cgroup_pool_state {
  * do not think more granular locking makes sense. Most protection is offered
  * by RCU and the lockless operating page_counter.
  */
-static DEFINE_SPINLOCK(drmcg_lock);
+static DEFINE_SPINLOCK(devcg_lock);
 static LIST_HEAD(drmcg_devices);
 
 static inline struct drmcgroup_state *
@@ -162,7 +162,7 @@ static void drmcs_free(struct cgroup_subsys_state *css)
 	struct drmcgroup_state *drmcs = css_to_drmcs(css);
 	struct dev_cgroup_pool_state *pool, *next;
 
-	spin_lock(&drmcg_lock);
+	spin_lock(&devcg_lock);
 	list_for_each_entry_safe(pool, next, &drmcs->pools, css_node) {
 		/*
 		 *The pool is dead and all references are 0,
@@ -171,7 +171,7 @@ static void drmcs_free(struct cgroup_subsys_state *css)
 		list_del(&pool->css_node);
 		free_cg_pool(pool);
 	}
-	spin_unlock(&drmcg_lock);
+	spin_unlock(&devcg_lock);
 
 	kfree(drmcs);
 }
@@ -192,7 +192,7 @@ find_cg_pool_locked(struct drmcgroup_state *drmcs, struct drmcg_device *dev)
 {
 	struct dev_cgroup_pool_state *pool;
 
-	list_for_each_entry_rcu(pool, &drmcs->pools, css_node, spin_locked(&drmcg_lock))
+	list_for_each_entry_rcu(pool, &drmcs->pools, css_node, spin_locked(&devcg_lock))
 		if (pool->device == dev)
 			return pool;
 
@@ -375,7 +375,7 @@ void dev_cgroup_unregister_device(struct dev_cgroup_device *cgdev)
 	dev = cgdev->priv;
 	cgdev->priv = NULL;
 
-	spin_lock(&drmcg_lock);
+	spin_lock(&devcg_lock);
 
 	/* Remove from global device list */
 	list_del_rcu(&dev->dev_node);
@@ -393,7 +393,7 @@ void dev_cgroup_unregister_device(struct dev_cgroup_device *cgdev)
 	 * by get_cg_pool_unlocked.
 	 */
 	dev->unregistered = true;
-	spin_unlock(&drmcg_lock);
+	spin_unlock(&devcg_lock);
 
 	kref_put(&dev->ref, drmcg_free_device);
 }
@@ -426,9 +426,9 @@ int dev_cgroup_register_device(struct dev_cgroup_device *cgdev,
 	dev->base = *cgdev;
 	kref_init(&dev->ref);
 
-	spin_lock(&drmcg_lock);
+	spin_lock(&devcg_lock);
 	list_add_tail_rcu(&dev->dev_node, &drmcg_devices);
-	spin_unlock(&drmcg_lock);
+	spin_unlock(&devcg_lock);
 
 	return 0;
 }
@@ -438,7 +438,7 @@ static struct drmcg_device *drmcg_get_device(const char *name)
 {
 	struct drmcg_device *dev;
 
-	list_for_each_entry_rcu(dev, &drmcg_devices, dev_node, spin_locked(&drmcg_lock))
+	list_for_each_entry_rcu(dev, &drmcg_devices, dev_node, spin_locked(&devcg_lock))
 		if (!strcmp(name, dev->name) &&
 		    kref_get_unless_zero(&dev->ref))
 			return dev;
@@ -466,12 +466,12 @@ get_cg_pool_unlocked(struct drmcgroup_state *cg, struct drmcg_device *dev)
 	rcu_read_unlock();
 
 	while (!pool) {
-		spin_lock(&drmcg_lock);
+		spin_lock(&devcg_lock);
 		if (!dev->unregistered)
 			pool = get_cg_pool_locked(cg, dev, &allocpool);
 		else
 			pool = ERR_PTR(-ENODEV);
-		spin_unlock(&drmcg_lock);
+		spin_unlock(&devcg_lock);
 
 		if (pool == ERR_PTR(-ENOMEM)) {
 			pool = NULL;
