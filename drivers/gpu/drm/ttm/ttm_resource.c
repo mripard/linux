@@ -231,28 +231,28 @@ EXPORT_SYMBOL(ttm_resource_fini);
 int ttm_resource_alloc(struct ttm_buffer_object *bo,
 		       const struct ttm_place *place,
 		       struct ttm_resource **res_ptr,
-		       struct dev_cgroup_pool_state **limitcs)
+		       struct dev_cgroup_pool_state **ret_limit_pool)
 {
 	struct ttm_resource_manager *man =
 		ttm_manager_type(bo->bdev, place->mem_type);
-	struct dev_cgroup_pool_state *drmcs = NULL;
+	struct dev_cgroup_pool_state *pool = NULL;
 	int ret;
 
 	if (man->cgdev) {
 		ret = dev_cgroup_try_charge(man->cgdev, man->cgidx,
-				       bo->base.size, &drmcs, limitcs);
+					    bo->base.size, &pool, ret_limit_pool);
 		if (ret)
 			return ret;
 	}
 
 	ret = man->func->alloc(man, bo, place, res_ptr);
 	if (ret) {
-		if (drmcs)
-			dev_cgroup_uncharge(drmcs, man->cgidx, bo->base.size);
+		if (pool)
+			dev_cgroup_uncharge(pool, man->cgidx, bo->base.size);
 		return ret;
 	}
 
-	(*res_ptr)->css = drmcs;
+	(*res_ptr)->css = pool;
 
 	spin_lock(&bo->bdev->lru_lock);
 	ttm_resource_add_bulk_move(*res_ptr, bo);
@@ -264,7 +264,7 @@ EXPORT_SYMBOL_FOR_TESTS_ONLY(ttm_resource_alloc);
 void ttm_resource_free(struct ttm_buffer_object *bo, struct ttm_resource **res)
 {
 	struct ttm_resource_manager *man;
-	struct dev_cgroup_pool_state *css;
+	struct dev_cgroup_pool_state *pool;
 
 	if (!*res)
 		return;
@@ -273,12 +273,12 @@ void ttm_resource_free(struct ttm_buffer_object *bo, struct ttm_resource **res)
 	ttm_resource_del_bulk_move(*res, bo);
 	spin_unlock(&bo->bdev->lru_lock);
 
-	css = (*res)->css;
+	pool = (*res)->css;
 	man = ttm_manager_type(bo->bdev, (*res)->mem_type);
 	man->func->free(man, *res);
 	*res = NULL;
 	if (man->cgdev)
-		dev_cgroup_uncharge(css, man->cgidx, bo->base.size);
+		dev_cgroup_uncharge(pool, man->cgidx, bo->base.size);
 }
 EXPORT_SYMBOL(ttm_resource_free);
 

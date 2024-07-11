@@ -597,7 +597,7 @@ int ttm_mem_evict_first(struct ttm_device *bdev,
 			const struct ttm_place *place,
 			struct ttm_operation_ctx *ctx,
 			struct ww_acquire_ctx *ticket,
-			struct dev_cgroup_pool_state *limitcss)
+			struct dev_cgroup_pool_state *limit_pool)
 {
 	struct ttm_buffer_object *bo = NULL, *busy_bo = NULL;
 	struct ttm_resource_cursor cursor;
@@ -611,7 +611,7 @@ retry:
 	ttm_resource_manager_for_each_res(man, &cursor, res) {
 		bool busy;
 
-		if (!dev_cgroup_state_evict_valuable(man->cgdev, man->cgidx, limitcss, res->css, try_low, &hit_low))
+		if (!dev_cgroup_state_evict_valuable(man->cgdev, man->cgidx, limit_pool, res->css, try_low, &hit_low))
 			continue;
 
 		if (!ttm_bo_evict_swapout_allowable(res->bo, ctx, place,
@@ -789,19 +789,19 @@ static int ttm_bo_alloc_resource(struct ttm_buffer_object *bo,
 			continue;
 
 		do {
-			struct dev_cgroup_pool_state *limitcss = NULL;
+			struct dev_cgroup_pool_state *limit_pool = NULL;
 
-			ret = ttm_resource_alloc(bo, place, res, force_space ? &limitcss : NULL);
+			ret = ttm_resource_alloc(bo, place, res, force_space ? &limit_pool : NULL);
 			if (unlikely(ret && ret != -ENOSPC && ret != -EAGAIN)) {
-				dev_cgroup_pool_state_put(limitcss);
+				dev_cgroup_pool_state_put(limit_pool);
 				return ret;
 			}
 			if (likely(!ret) || !force_space)
 				break;
 
 			ret = ttm_mem_evict_first(bdev, man, place, ctx,
-						  ticket, limitcss);
-			dev_cgroup_pool_state_put(limitcss);
+						  ticket, limit_pool);
+			dev_cgroup_pool_state_put(limit_pool);
 			if (unlikely(ret == -EBUSY))
 				break;
 			if (unlikely(ret))
