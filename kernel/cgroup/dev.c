@@ -208,24 +208,23 @@ static struct dev_cgroup_pool_state *pool_parent(struct dev_cgroup_pool_state *p
 }
 
 bool dev_cgroup_state_evict_valuable(struct dev_cgroup_device *dev, int index,
-				     struct dev_cgroup_pool_state *limit,
-				     struct dev_cgroup_pool_state *test,
-				     bool ignore_low,
-				     bool *hit_low)
+				     struct dev_cgroup_pool_state *limit_pool,
+				     struct dev_cgroup_pool_state *test_pool,
+				     bool ignore_low, bool *hit_low)
 {
-	struct dev_cgroup_pool_state *pool = test;
+	struct dev_cgroup_pool_state *pool = test_pool;
 	struct page_counter *climit, *ctest;
 	u64 used, min, low;
 
 	/* Can always evict from current pool, despite limits */
-	if (limit == test)
+	if (limit_pool == test_pool)
 		return true;
 
-	if (limit) {
-		if (!parent_devcs(limit->cs))
+	if (limit_pool) {
+		if (!parent_devcs(limit_pool->cs))
 			return true;
 
-		for (pool = test; pool && limit != pool; pool = pool_parent(pool))
+		for (pool = test_pool; pool && limit_pool != pool; pool = pool_parent(pool))
 			{}
 
 		if (!pool)
@@ -235,12 +234,12 @@ bool dev_cgroup_state_evict_valuable(struct dev_cgroup_device *dev, int index,
 		 * If there is no cgroup limiting memory usage, use the root
 		 * cgroup instead for limit calculations.
 		 */
-		for (limit = test; pool_parent(limit); limit = pool_parent(limit))
+		for (limit_pool = test_pool; pool_parent(limit_pool); limit_pool = pool_parent(limit_pool))
 			{}
 	}
 
-	climit = &limit->resources[index].cnt;
-	ctest = &test->resources[index].cnt;
+	climit = &limit_pool->resources[index].cnt;
+	ctest = &test_pool->resources[index].cnt;
 
 	page_counter_calculate_protection(climit, ctest, true);
 

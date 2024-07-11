@@ -41,8 +41,8 @@ int dev_cgroup_try_charge(struct dev_cgroup_device *cgdev,
 void dev_cgroup_uncharge(struct dev_cgroup_pool_state *drmcs,
 			 u32 index, u64 size);
 bool dev_cgroup_state_evict_valuable(struct dev_cgroup_device *dev, int index,
-				     struct dev_cgroup_pool_state *limitcs,
-				     struct dev_cgroup_pool_state *testcs,
+				     struct dev_cgroup_pool_state *limit_pool,
+				     struct dev_cgroup_pool_state *test_pool,
 				     bool ignore_low, bool *hit_low);
 
 void dev_cgroup_pool_state_put(struct dev_cgroup_pool_state *drmcs);
@@ -77,8 +77,8 @@ static inline void dev_cgroup_uncharge(struct dev_cgroup_pool_state *drmcs,
 
 static inline
 bool dev_cgroup_state_evict_valuable(struct dev_cgroup_device *dev, int index,
-				     struct dev_cgroup_pool_state *limitcs,
-				     struct dev_cgroup_pool_state *testcs,
+				     struct dev_cgroup_pool_state *limit_pool,
+				     struct dev_cgroup_pool_state *test_pool,
 				     bool ignore_low, bool *hit_low)
 {
 	return true;
