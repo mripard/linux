@@ -15,7 +15,7 @@
 #include <linux/parser.h>
 #include <linux/slab.h>
 
-struct drmcg_device {
+struct devcg_device {
 	spinlock_t lock;
 	struct kref ref;
 	struct rcu_head rcu;
@@ -38,15 +38,15 @@ struct drmcg_device {
 	bool unregistered;
 };
 
-struct drmcgroup_state {
+struct devcg_state {
 	struct cgroup_subsys_state css;
 
 	struct list_head pools;
 };
 
 struct dev_cgroup_pool_state {
-	struct drmcg_device *device;
-	struct drmcgroup_state *cs;
+	struct devcg_device *device;
+	struct devcg_state *cs;
 
 	/* css node, RCU protected against device teardown */
 	struct list_head	css_node;
@@ -57,7 +57,7 @@ struct dev_cgroup_pool_state {
 	int num_res, inited;
 	struct rcu_head rcu;
 
-	struct drmcgroup_pool_res {
+	struct devcg_pool_res {
 		struct page_counter cnt;
 	} resources[];
 };
@@ -75,18 +75,18 @@ struct dev_cgroup_pool_state {
 static DEFINE_SPINLOCK(devcg_lock);
 static LIST_HEAD(devcg_devices);
 
-static inline struct drmcgroup_state *
+static inline struct devcg_state *
 css_to_drmcs(struct cgroup_subsys_state *css)
 {
-	return container_of(css, struct drmcgroup_state, css);
+	return container_of(css, struct devcg_state, css);
 }
 
-static inline struct drmcgroup_state *get_current_drmcg(void)
+static inline struct devcg_state *get_current_drmcg(void)
 {
 	return css_to_drmcs(task_get_css(current, dev_cgrp_id));
 }
 
-static struct drmcgroup_state *parent_drmcg(struct drmcgroup_state *cg)
+static struct devcg_state *parent_drmcg(struct devcg_state *cg)
 {
 	return cg->css.parent ? css_to_drmcs(cg->css.parent) : NULL;
 }
@@ -148,7 +148,7 @@ static void reset_all_resource_limits(struct dev_cgroup_pool_state *rpool)
 
 static void drmcs_offline(struct cgroup_subsys_state *css)
 {
-	struct drmcgroup_state *drmcs = css_to_drmcs(css);
+	struct devcg_state *drmcs = css_to_drmcs(css);
 	struct dev_cgroup_pool_state *pool;
 
 	rcu_read_lock();
@@ -159,7 +159,7 @@ static void drmcs_offline(struct cgroup_subsys_state *css)
 
 static void drmcs_free(struct cgroup_subsys_state *css)
 {
-	struct drmcgroup_state *drmcs = css_to_drmcs(css);
+	struct devcg_state *drmcs = css_to_drmcs(css);
 	struct dev_cgroup_pool_state *pool, *next;
 
 	spin_lock(&devcg_lock);
@@ -179,7 +179,7 @@ static void drmcs_free(struct cgroup_subsys_state *css)
 static struct cgroup_subsys_state *
 drmcs_alloc(struct cgroup_subsys_state *parent_css)
 {
-	struct drmcgroup_state *drmcs = kzalloc(sizeof(*drmcs), GFP_KERNEL);
+	struct devcg_state *drmcs = kzalloc(sizeof(*drmcs), GFP_KERNEL);
 	if (!drmcs)
 		return ERR_PTR(-ENOMEM);
 
@@ -188,7 +188,7 @@ drmcs_alloc(struct cgroup_subsys_state *parent_css)
 }
 
 static struct dev_cgroup_pool_state *
-find_cg_pool_locked(struct drmcgroup_state *drmcs, struct drmcg_device *dev)
+find_cg_pool_locked(struct devcg_state *drmcs, struct devcg_device *dev)
 {
 	struct dev_cgroup_pool_state *pool;
 
@@ -263,10 +263,10 @@ bool dev_cgroup_state_evict_valuable(struct dev_cgroup_device *dev, int index,
 EXPORT_SYMBOL_GPL(dev_cgroup_state_evict_valuable);
 
 static struct dev_cgroup_pool_state *
-alloc_pool_single(struct drmcgroup_state *drmcs, struct drmcg_device *dev,
+alloc_pool_single(struct devcg_state *drmcs, struct devcg_device *dev,
 		  struct dev_cgroup_pool_state **allocpool)
 {
-	struct drmcgroup_state *parent = parent_drmcg(drmcs);
+	struct devcg_state *parent = parent_drmcg(drmcs);
 	struct dev_cgroup_pool_state *pool, *ppool = NULL;
 	int i;
 
@@ -301,11 +301,11 @@ alloc_pool_single(struct drmcgroup_state *drmcs, struct drmcg_device *dev,
 }
 
 static struct dev_cgroup_pool_state *
-get_cg_pool_locked(struct drmcgroup_state *drmcs, struct drmcg_device *dev,
+get_cg_pool_locked(struct devcg_state *drmcs, struct devcg_device *dev,
 		   struct dev_cgroup_pool_state **allocpool)
 {
 	struct dev_cgroup_pool_state *pool, *ppool, *retpool;
-	struct drmcgroup_state *p, *pp;
+	struct devcg_state *p, *pp;
 	int i;
 
 	/*
@@ -348,7 +348,7 @@ get_cg_pool_locked(struct drmcgroup_state *drmcs, struct drmcg_device *dev,
 
 static void drmcg_free_rcu(struct rcu_head *rcu)
 {
-	struct drmcg_device *dev = container_of(rcu, typeof(*dev), rcu);
+	struct devcg_device *dev = container_of(rcu, typeof(*dev), rcu);
 	struct dev_cgroup_pool_state *pool, *next;
 
 	list_for_each_entry_safe(pool, next, &dev->pools, dev_node)
@@ -359,14 +359,14 @@ static void drmcg_free_rcu(struct rcu_head *rcu)
 
 static void drmcg_free_device(struct kref *ref)
 {
-	struct drmcg_device *cgdev = container_of(ref, typeof(*cgdev), ref);
+	struct devcg_device *cgdev = container_of(ref, typeof(*cgdev), ref);
 
 	call_rcu(&cgdev->rcu, drmcg_free_rcu);
 }
 
 void dev_cgroup_unregister_device(struct dev_cgroup_device *cgdev)
 {
-	struct drmcg_device *dev;
+	struct devcg_device *dev;
 	struct list_head *entry;
 
 	if (!cgdev || !cgdev->priv)
@@ -403,7 +403,7 @@ EXPORT_SYMBOL_GPL(dev_cgroup_unregister_device);
 int dev_cgroup_register_device(struct dev_cgroup_device *cgdev,
 			       const char *name)
 {
-	struct drmcg_device *dev;
+	struct devcg_device *dev;
 	char *dev_name;
 
 	cgdev->priv = NULL;
@@ -434,9 +434,9 @@ int dev_cgroup_register_device(struct dev_cgroup_device *cgdev,
 }
 EXPORT_SYMBOL_GPL(dev_cgroup_register_device);
 
-static struct drmcg_device *drmcg_get_device(const char *name)
+static struct devcg_device *drmcg_get_device(const char *name)
 {
-	struct drmcg_device *dev;
+	struct devcg_device *dev;
 
 	list_for_each_entry_rcu(dev, &devcg_devices, dev_node, spin_locked(&devcg_lock))
 		if (!strcmp(name, dev->name) &&
@@ -454,7 +454,7 @@ void dev_cgroup_pool_state_put(struct dev_cgroup_pool_state *pool)
 EXPORT_SYMBOL_GPL(dev_cgroup_pool_state_put);
 
 static struct dev_cgroup_pool_state *
-get_cg_pool_unlocked(struct drmcgroup_state *cg, struct drmcg_device *dev)
+get_cg_pool_unlocked(struct devcg_state *cg, struct devcg_device *dev)
 {
 	struct dev_cgroup_pool_state *pool, *allocpool = NULL;
 
@@ -512,8 +512,8 @@ int dev_cgroup_try_charge(struct dev_cgroup_device *dev,
 			  struct dev_cgroup_pool_state **drmcs,
 			  struct dev_cgroup_pool_state **limitcs)
 {
-	struct drmcg_device *cgdev = dev->priv;
-	struct drmcgroup_state *cg;
+	struct devcg_device *cgdev = dev->priv;
+	struct devcg_state *cg;
 	struct dev_cgroup_pool_state *pool;
 	struct page_counter *fail;
 	int ret;
@@ -562,7 +562,7 @@ EXPORT_SYMBOL_GPL(dev_cgroup_try_charge);
 
 static int drmcg_capacity_show(struct seq_file *sf, void *v)
 {
-	struct drmcg_device *dev;
+	struct devcg_device *dev;
 	int i;
 
 	rcu_read_lock();
@@ -617,7 +617,7 @@ static s64 parse_resource(char *c, char **retname)
 	return -EINVAL;
 }
 
-static int drmcg_parse_limits(char *options, struct drmcg_device *dev,
+static int drmcg_parse_limits(char *options, struct devcg_device *dev,
 			      u64 *new_limits, unsigned long *set_mask)
 {
 	char *c, *region;
@@ -649,14 +649,14 @@ static ssize_t drmcg_limit_write(struct kernfs_open_file *of,
 				 char *buf, size_t nbytes, loff_t off,
 				 void (*apply)(struct dev_cgroup_pool_state *, int, u64))
 {
-	struct drmcgroup_state *drmcs = css_to_drmcs(of_css(of));
+	struct devcg_state *drmcs = css_to_drmcs(of_css(of));
 	int err = 0;
 
 	while (buf && !err) {
 		struct dev_cgroup_pool_state *pool = NULL;
 		char *options, *dev_name;
 		unsigned long set_mask = 0;
-		struct drmcg_device *dev;
+		struct devcg_device *dev;
 		u64 new_limits[DEVICE_CGROUP_MAX_REGIONS];
 		int i;
 
@@ -707,8 +707,8 @@ out_put:
 static int drmcg_limit_show(struct seq_file *sf, void *v,
 			    u64 (*fn)(struct dev_cgroup_pool_state *, int))
 {
-	struct drmcgroup_state *drmcs = css_to_drmcs(seq_css(sf));
-	struct drmcg_device *dev;
+	struct devcg_state *drmcs = css_to_drmcs(seq_css(sf));
+	struct devcg_device *dev;
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(dev, &devcg_devices, dev_node) {
