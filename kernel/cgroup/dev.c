@@ -188,11 +188,11 @@ devcs_alloc(struct cgroup_subsys_state *parent_css)
 }
 
 static struct dev_cgroup_pool_state *
-find_cg_pool_locked(struct devcg_state *drmcs, struct devcg_device *dev)
+find_cg_pool_locked(struct devcg_state *devcs, struct devcg_device *dev)
 {
 	struct dev_cgroup_pool_state *pool;
 
-	list_for_each_entry_rcu(pool, &drmcs->pools, css_node, spin_locked(&devcg_lock))
+	list_for_each_entry_rcu(pool, &devcs->pools, css_node, spin_locked(&devcg_lock))
 		if (pool->device == dev)
 			return pool;
 
@@ -263,10 +263,10 @@ bool dev_cgroup_state_evict_valuable(struct dev_cgroup_device *dev, int index,
 EXPORT_SYMBOL_GPL(dev_cgroup_state_evict_valuable);
 
 static struct dev_cgroup_pool_state *
-alloc_pool_single(struct devcg_state *drmcs, struct devcg_device *dev,
+alloc_pool_single(struct devcg_state *devcs, struct devcg_device *dev,
 		  struct dev_cgroup_pool_state **allocpool)
 {
-	struct devcg_state *parent = parent_devcs(drmcs);
+	struct devcg_state *parent = parent_devcs(devcs);
 	struct dev_cgroup_pool_state *pool, *ppool = NULL;
 	int i;
 
@@ -281,7 +281,7 @@ alloc_pool_single(struct devcg_state *drmcs, struct devcg_device *dev,
 
 	pool->device = dev;
 	pool->num_res = dev->base.num_regions;
-	pool->cs = drmcs;
+	pool->cs = devcs;
 
 	if (parent)
 		ppool = find_cg_pool_locked(parent, dev);
@@ -290,7 +290,7 @@ alloc_pool_single(struct devcg_state *drmcs, struct devcg_device *dev,
 		page_counter_init(&pool->resources[i].cnt, ppool ? &ppool->resources[i].cnt : NULL);
 	reset_all_resource_limits(pool);
 
-	list_add_tail_rcu(&pool->css_node, &drmcs->pools);
+	list_add_tail_rcu(&pool->css_node, &devcs->pools);
 	list_add_tail(&pool->dev_node, &dev->pools);
 
 	if (!parent)
@@ -301,7 +301,7 @@ alloc_pool_single(struct devcg_state *drmcs, struct devcg_device *dev,
 }
 
 static struct dev_cgroup_pool_state *
-get_cg_pool_locked(struct devcg_state *drmcs, struct devcg_device *dev,
+get_cg_pool_locked(struct devcg_state *devcs, struct devcg_device *dev,
 		   struct dev_cgroup_pool_state **allocpool)
 {
 	struct dev_cgroup_pool_state *pool, *ppool, *retpool;
@@ -312,7 +312,7 @@ get_cg_pool_locked(struct devcg_state *drmcs, struct devcg_device *dev,
 	 * Recursively create pool, we may not initialize yet on
 	 * recursion, this is done as a separate step.
 	 */
-	for (p = drmcs; p; p = parent_devcs(p)) {
+	for (p = devcs; p; p = parent_devcs(p)) {
 		pool = find_cg_pool_locked(p, dev);
 		if (!pool)
 			pool = alloc_pool_single(p, dev, allocpool);
@@ -320,15 +320,15 @@ get_cg_pool_locked(struct devcg_state *drmcs, struct devcg_device *dev,
 		if (IS_ERR(pool))
 			return pool;
 
-		if (p == drmcs && pool->inited)
+		if (p == devcs && pool->inited)
 			return pool;
 
 		if (pool->inited)
 			break;
 	}
 
-	retpool = pool = find_cg_pool_locked(drmcs, dev);
-	for (p = drmcs, pp = parent_devcs(drmcs); pp; p = pp, pp = parent_devcs(p)) {
+	retpool = pool = find_cg_pool_locked(devcs, dev);
+	for (p = devcs, pp = parent_devcs(devcs); pp; p = pp, pp = parent_devcs(p)) {
 		if (pool->inited)
 			break;
 
@@ -649,7 +649,7 @@ static ssize_t devcg_limit_write(struct kernfs_open_file *of,
 				 char *buf, size_t nbytes, loff_t off,
 				 void (*apply)(struct dev_cgroup_pool_state *, int, u64))
 {
-	struct devcg_state *drmcs = css_to_devcs(of_css(of));
+	struct devcg_state *devcs = css_to_devcs(of_css(of));
 	int err = 0;
 
 	while (buf && !err) {
@@ -686,7 +686,7 @@ static ssize_t devcg_limit_write(struct kernfs_open_file *of,
 		if (err < 0)
 			goto out_put;
 
-		pool = get_cg_pool_unlocked(drmcs, dev);
+		pool = get_cg_pool_unlocked(devcs, dev);
 		if (IS_ERR(pool)) {
 			err = PTR_ERR(pool);
 			goto out_put;
@@ -707,12 +707,12 @@ out_put:
 static int devcg_limit_show(struct seq_file *sf, void *v,
 			    u64 (*fn)(struct dev_cgroup_pool_state *, int))
 {
-	struct devcg_state *drmcs = css_to_devcs(seq_css(sf));
+	struct devcg_state *devcs = css_to_devcs(seq_css(sf));
 	struct devcg_device *dev;
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(dev, &devcg_devices, dev_node) {
-		struct dev_cgroup_pool_state *pool = find_cg_pool_locked(drmcs, dev);
+		struct dev_cgroup_pool_state *pool = find_cg_pool_locked(devcs, dev);
 
 		seq_puts(sf, dev->name);
 
@@ -730,7 +730,7 @@ static int devcg_limit_show(struct seq_file *sf, void *v,
 	}
 	rcu_read_unlock();
 
-	css_put(&drmcs->css);
+	css_put(&devcs->css);
 
 	return 0;
 }
