@@ -31,7 +31,7 @@ struct dev_cgroup_device {
 };
 
 #if IS_ENABLED(CONFIG_CGROUP_DEV)
-int dev_cgroup_register_device(struct dev_cgroup_device *drm_cg,
+int dev_cgroup_register_device(struct dev_cgroup_device *cgdev,
 			       const char *name);
 void dev_cgroup_unregister_device(struct dev_cgroup_device *cgdev);
 int dev_cgroup_try_charge(struct dev_cgroup_device *cgdev,
@@ -48,7 +48,7 @@ bool dev_cgroup_state_evict_valuable(struct dev_cgroup_device *dev, int index,
 void dev_cgroup_pool_state_put(struct dev_cgroup_pool_state *pool);
 #else
 static inline int
-dev_cgroup_register_device(struct dev_cgroup_device *drm_cg,
+dev_cgroup_register_device(struct dev_cgroup_device *cgdev,
 			   const char *name)
 {
 	return 0;
