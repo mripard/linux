@@ -86,7 +86,7 @@ static inline struct devcg_state *get_current_devcs(void)
 	return css_to_devcs(task_get_css(current, dev_cgrp_id));
 }
 
-static struct devcg_state *parent_drmcg(struct devcg_state *cg)
+static struct devcg_state *parent_devcs(struct devcg_state *cg)
 {
 	return cg->css.parent ? css_to_devcs(cg->css.parent) : NULL;
 }
@@ -222,7 +222,7 @@ bool dev_cgroup_state_evict_valuable(struct dev_cgroup_device *dev, int index,
 		return true;
 
 	if (limit) {
-		if (!parent_drmcg(limit->cs))
+		if (!parent_devcs(limit->cs))
 			return true;
 
 		for (pool = test; pool && limit != pool; pool = pool_parent(pool))
@@ -266,7 +266,7 @@ static struct dev_cgroup_pool_state *
 alloc_pool_single(struct devcg_state *drmcs, struct devcg_device *dev,
 		  struct dev_cgroup_pool_state **allocpool)
 {
-	struct devcg_state *parent = parent_drmcg(drmcs);
+	struct devcg_state *parent = parent_devcs(drmcs);
 	struct dev_cgroup_pool_state *pool, *ppool = NULL;
 	int i;
 
@@ -312,7 +312,7 @@ get_cg_pool_locked(struct devcg_state *drmcs, struct devcg_device *dev,
 	 * Recursively create pool, we may not initialize yet on
 	 * recursion, this is done as a separate step.
 	 */
-	for (p = drmcs; p; p = parent_drmcg(p)) {
+	for (p = drmcs; p; p = parent_devcs(p)) {
 		pool = find_cg_pool_locked(p, dev);
 		if (!pool)
 			pool = alloc_pool_single(p, dev, allocpool);
@@ -328,7 +328,7 @@ get_cg_pool_locked(struct devcg_state *drmcs, struct devcg_device *dev,
 	}
 
 	retpool = pool = find_cg_pool_locked(drmcs, dev);
-	for (p = drmcs, pp = parent_drmcg(drmcs); pp; p = pp, pp = parent_drmcg(p)) {
+	for (p = drmcs, pp = parent_devcs(drmcs); pp; p = pp, pp = parent_devcs(p)) {
 		if (pool->inited)
 			break;
 
