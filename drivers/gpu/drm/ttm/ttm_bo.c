@@ -611,7 +611,7 @@ retry:
 	ttm_resource_manager_for_each_res(man, &cursor, res) {
 		bool busy;
 
-		if (!drmcs_evict_valuable(limitcss, man->cgdev, man->cgidx, res->css, try_low, &hit_low))
+		if (!drmcs_evict_valuable(man->cgdev, man->cgidx, limitcss, res->css, try_low, &hit_low))
 			continue;
 
 		if (!ttm_bo_evict_swapout_allowable(res->bo, ctx, place,

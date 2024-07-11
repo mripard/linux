@@ -239,9 +239,8 @@ int ttm_resource_alloc(struct ttm_buffer_object *bo,
 	int ret;
 
 	if (man->cgdev) {
-		ret = drmcg_try_charge(&drmcs, limitcs,
-				       man->cgdev, man->cgidx,
-				       bo->base.size);
+		ret = drmcg_try_charge(man->cgdev, man->cgidx,
+				       bo->base.size, &drmcs, limitcs);
 		if (ret)
 			return ret;
 	}
