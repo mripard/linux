@@ -509,8 +509,8 @@ EXPORT_SYMBOL_GPL(dev_cgroup_uncharge);
 
 int dev_cgroup_try_charge(struct dev_cgroup_device *dev,
 			  u32 index, u64 size,
-			  struct dev_cgroup_pool_state **drmcs,
-			  struct dev_cgroup_pool_state **limitcs)
+			  struct dev_cgroup_pool_state **ret_pool,
+			  struct dev_cgroup_pool_state **ret_limit_pool)
 {
 	struct devcg_device *cgdev = dev->priv;
 	struct devcg_state *cg;
@@ -518,9 +518,9 @@ int dev_cgroup_try_charge(struct dev_cgroup_device *dev,
 	struct page_counter *fail;
 	int ret;
 
-	*drmcs = NULL;
-	if (limitcs)
-		*limitcs = NULL;
+	*ret_pool = NULL;
+	if (ret_limit_pool)
+		*ret_limit_pool = NULL;
 
 	/* Early init or device unregistered */
 	if (!cgdev)
@@ -542,16 +542,16 @@ int dev_cgroup_try_charge(struct dev_cgroup_device *dev,
 	}
 
 	if (!page_counter_try_charge(&pool->resources[index].cnt, size, &fail)) {
-		if (limitcs) {
-			*limitcs = container_of(fail, struct dev_cgroup_pool_state, resources[index].cnt);
-			css_get(&(*limitcs)->cs->css);
+		if (ret_limit_pool) {
+			*ret_limit_pool = container_of(fail, struct dev_cgroup_pool_state, resources[index].cnt);
+			css_get(&(*ret_limit_pool)->cs->css);
 		}
 		ret = -EAGAIN;
 		goto err;
 	}
 
-	/* On success, reference is transferred to *drmcs */
-	*drmcs = pool;
+	/* On success, reference is transferred to *ret_pool */
+	*ret_pool = pool;
 	return 0;
 
 err:
