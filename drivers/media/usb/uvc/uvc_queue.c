@@ -288,7 +288,8 @@ int uvc_create_buffers(struct uvc_video_queue *queue,
 	int ret;
 
 	mutex_lock(&queue->mutex);
-	ret = vb2_create_bufs(&queue->queue, cb);
+	// FIXME: This is obviously very wrong
+	ret = vb2_create_bufs(NULL, &queue->queue, cb);
 	mutex_unlock(&queue->mutex);
 
 	return ret;

@@ -816,7 +816,8 @@ void vb2_core_querybuf(struct vb2_queue *q, struct vb2_buffer *vb, void *pb);
  *
  * Return: returns zero on success; an error code otherwise.
  */
-int vb2_core_reqbufs(struct vb2_queue *q, enum vb2_memory memory,
+int vb2_core_reqbufs(struct video_device *vdev,
+		     struct vb2_queue *q, enum vb2_memory memory,
 		     unsigned int flags, unsigned int *count);
 
 /**
@@ -842,7 +843,8 @@ int vb2_core_reqbufs(struct vb2_queue *q, enum vb2_memory memory,
  *
  * Return: returns zero on success; an error code otherwise.
  */
-int vb2_core_create_bufs(struct vb2_queue *q, enum vb2_memory memory,
+int vb2_core_create_bufs(struct video_device *vdev,
+			 struct vb2_queue *q, enum vb2_memory memory,
 			 unsigned int flags, unsigned int *count,
 			 unsigned int requested_planes,
 			 const unsigned int requested_sizes[],

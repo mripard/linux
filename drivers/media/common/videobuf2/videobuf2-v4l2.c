@@ -712,7 +712,9 @@ int vb2_reqbufs(struct vb2_queue *q, struct v4l2_requestbuffers *req)
 	vb2_set_flags_and_caps(q, req->memory, &flags,
 			       &req->capabilities, NULL);
 	req->flags = flags;
-	return ret ? ret : vb2_core_reqbufs(q, req->memory,
+
+	// FIXME: This is obviously very wrong
+	return ret ? ret : vb2_core_reqbufs(NULL, q, req->memory,
 					    req->flags, &req->count);
 }
 EXPORT_SYMBOL_GPL(vb2_reqbufs);
@@ -743,7 +745,8 @@ int vb2_prepare_buf(struct vb2_queue *q, struct media_device *mdev,
 }
 EXPORT_SYMBOL_GPL(vb2_prepare_buf);
 
-int vb2_create_bufs(struct vb2_queue *q, struct v4l2_create_buffers *create)
+int vb2_create_bufs(struct video_device *vdev, struct vb2_queue *q,
+		    struct v4l2_create_buffers *create)
 {
 	unsigned requested_planes = 1;
 	unsigned requested_sizes[VIDEO_MAX_PLANES];
@@ -798,7 +801,8 @@ int vb2_create_bufs(struct vb2_queue *q, struct v4l2_create_buffers *create)
 	if (ret)
 		return ret;
 
-	return vb2_core_create_bufs(q, create->memory,
+	return vb2_core_create_bufs(vdev,
+				    q, create->memory,
 				    create->flags,
 				    &create->count,
 				    requested_planes,
@@ -1033,7 +1037,7 @@ int vb2_ioctl_reqbufs(struct file *file, void *priv,
 		return res;
 	if (vb2_queue_is_busy(vdev->queue, file))
 		return -EBUSY;
-	res = vb2_core_reqbufs(vdev->queue, p->memory, p->flags, &p->count);
+	res = vb2_core_reqbufs(vdev, vdev->queue, p->memory, p->flags, &p->count);
 	/* If count == 0, then the owner has released all buffers and he
 	   is no longer owner of the queue. Otherwise we have a new owner. */
 	if (res == 0)
@@ -1062,7 +1066,7 @@ int vb2_ioctl_create_bufs(struct file *file, void *priv,
 	if (vb2_queue_is_busy(vdev->queue, file))
 		return -EBUSY;
 
-	res = vb2_create_bufs(vdev->queue, p);
+	res = vb2_create_bufs(vdev, vdev->queue, p);
 	if (res == 0)
 		vdev->queue->owner = file->private_data;
 	return res;

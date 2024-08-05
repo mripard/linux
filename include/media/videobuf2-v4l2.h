@@ -92,7 +92,8 @@ int vb2_reqbufs(struct vb2_queue *q, struct v4l2_requestbuffers *req);
  * @create:	creation parameters, passed from userspace to
  *		&v4l2_ioctl_ops->vidioc_create_bufs handler in driver
  */
-int vb2_create_bufs(struct vb2_queue *q, struct v4l2_create_buffers *create);
+int vb2_create_bufs(struct video_device *vdev, struct vb2_queue *q,
+		    struct v4l2_create_buffers *create);
 
 /**
  * vb2_prepare_buf() - Pass ownership of a buffer from userspace to the kernel

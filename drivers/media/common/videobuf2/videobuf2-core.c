@@ -220,7 +220,7 @@ static const char *vb2_state_name(enum vb2_buffer_state s)
 /*
  * __vb2_buf_mem_alloc() - allocate video memory for the given buffer
  */
-static int __vb2_buf_mem_alloc(struct vb2_buffer *vb)
+static int __vb2_buf_mem_alloc(struct video_device *vdev, struct vb2_buffer *vb)
 {
 	struct vb2_queue *q = vb->vb2_queue;
 	void *mem_priv;
@@ -448,7 +448,7 @@ static void vb2_queue_remove_buffer(struct vb2_buffer *vb)
  *
  * Returns the number of buffers successfully allocated.
  */
-static int __vb2_queue_alloc(struct vb2_queue *q, enum vb2_memory memory,
+static int __vb2_queue_alloc(struct video_device *vdev, struct vb2_queue *q, enum vb2_memory memory,
 			     unsigned int num_buffers, unsigned int num_planes,
 			     const unsigned int plane_sizes[VB2_MAX_PLANES],
 			     unsigned int *first_index)
@@ -506,7 +506,7 @@ static int __vb2_queue_alloc(struct vb2_queue *q, enum vb2_memory memory,
 
 		/* Allocate video buffer memory for the MMAP type */
 		if (memory == VB2_MEMORY_MMAP) {
-			ret = __vb2_buf_mem_alloc(vb);
+			ret = __vb2_buf_mem_alloc(vdev, vb);
 			if (ret) {
 				dprintk(q, 1, "failed allocating memory for buffer %d\n",
 					buffer);
@@ -856,7 +856,8 @@ static void vb2_core_free_buffers_storage(struct vb2_queue *q)
 	q->bufs_bitmap = NULL;
 }
 
-int vb2_core_reqbufs(struct vb2_queue *q, enum vb2_memory memory,
+int vb2_core_reqbufs(struct video_device *vdev,
+		     struct vb2_queue *q, enum vb2_memory memory,
 		     unsigned int flags, unsigned int *count)
 {
 	unsigned int num_buffers, allocated_buffers, num_planes = 0;
@@ -946,8 +947,8 @@ int vb2_core_reqbufs(struct vb2_queue *q, enum vb2_memory memory,
 		}
 
 	/* Finally, allocate buffers and video memory */
-	allocated_buffers =
-		__vb2_queue_alloc(q, memory, num_buffers, num_planes, plane_sizes, &first_index);
+	allocated_buffers = __vb2_queue_alloc(vdev, q, memory, num_buffers,
+					      num_planes, plane_sizes, &first_index);
 	if (allocated_buffers == 0) {
 		/* There shouldn't be any buffers allocated, so first_index == 0 */
 		WARN_ON(first_index);
@@ -1021,7 +1022,8 @@ error:
 }
 EXPORT_SYMBOL_GPL(vb2_core_reqbufs);
 
-int vb2_core_create_bufs(struct vb2_queue *q, enum vb2_memory memory,
+int vb2_core_create_bufs(struct video_device *vdev,
+			 struct vb2_queue *q, enum vb2_memory memory,
 			 unsigned int flags, unsigned int *count,
 			 unsigned int requested_planes,
 			 const unsigned int requested_sizes[],
@@ -1083,8 +1085,8 @@ int vb2_core_create_bufs(struct vb2_queue *q, enum vb2_memory memory,
 		goto error;
 
 	/* Finally, allocate buffers and video memory */
-	allocated_buffers = __vb2_queue_alloc(q, memory, num_buffers,
-				num_planes, plane_sizes, first_index);
+	allocated_buffers = __vb2_queue_alloc(vdev, q, memory, num_buffers,
+					      num_planes, plane_sizes, first_index);
 	if (allocated_buffers == 0) {
 		dprintk(q, 1, "memory allocation failed\n");
 		ret = -ENOMEM;
@@ -2851,7 +2853,9 @@ static int __vb2_init_fileio(struct vb2_queue *q, int read)
 	fileio->memory = VB2_MEMORY_MMAP;
 	fileio->type = q->type;
 	q->fileio = fileio;
-	ret = vb2_core_reqbufs(q, fileio->memory, 0, &fileio->count);
+
+	// FIXME: This is obviously very wrong
+	ret = vb2_core_reqbufs(NULL, q, fileio->memory, 0, &fileio->count);
 	if (ret)
 		goto err_kfree;
 	/* vb2_fileio_data supports max VB2_MAX_FRAME buffers */
@@ -2929,7 +2933,8 @@ static int __vb2_init_fileio(struct vb2_queue *q, int read)
 
 err_reqbufs:
 	fileio->count = 0;
-	vb2_core_reqbufs(q, fileio->memory, 0, &fileio->count);
+	// FIXME: This is obviously very wrong
+	vb2_core_reqbufs(NULL, q, fileio->memory, 0, &fileio->count);
 
 err_kfree:
 	q->fileio = NULL;
@@ -2949,7 +2954,9 @@ static int __vb2_cleanup_fileio(struct vb2_queue *q)
 		vb2_core_streamoff(q, q->type);
 		q->fileio = NULL;
 		fileio->count = 0;
-		vb2_core_reqbufs(q, fileio->memory, 0, &fileio->count);
+
+		// FIXME: This is obviously very wrong
+		vb2_core_reqbufs(NULL, q, fileio->memory, 0, &fileio->count);
 		kfree(fileio);
 		dprintk(q, 3, "file io emulator closed\n");
 	}
