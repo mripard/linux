@@ -217,11 +217,14 @@ static const char *vb2_state_name(enum vb2_buffer_state s)
 	return "unknown";
 }
 
+#define CGROUP_REGION_IDX	0
+
 /*
  * __vb2_buf_mem_alloc() - allocate video memory for the given buffer
  */
 static int __vb2_buf_mem_alloc(struct video_device *vdev, struct vb2_buffer *vb)
 {
+	struct dev_cgroup_pool_state *pool;
 	struct vb2_queue *q = vb->vb2_queue;
 	void *mem_priv;
 	int plane;
@@ -239,6 +242,11 @@ static int __vb2_buf_mem_alloc(struct video_device *vdev, struct vb2_buffer *vb)
 		if (size < vb->planes[plane].length)
 			goto free;
 
+		ret = dev_cgroup_try_charge(&vdev->cgroup_device, CGROUP_REGION_IDX,
+					    size, &pool, NULL);
+		if (ret)
+			goto free;
+
 		mem_priv = call_ptr_memop(alloc,
 					  vb,
 					  q->alloc_devs[plane] ? : q->dev,
@@ -248,6 +256,10 @@ static int __vb2_buf_mem_alloc(struct video_device *vdev, struct vb2_buffer *vb)
 				ret = PTR_ERR(mem_priv);
 			goto free;
 		}
+
+		vb->planes[plane].cgroup.pool = pool;
+		vb->planes[plane].cgroup.region = CGROUP_REGION_IDX;
+		vb->planes[plane].cgroup.size = size;
 
 		/* Associate allocator private data with this plane */
 		vb->planes[plane].mem_priv = mem_priv;
@@ -272,8 +284,13 @@ static void __vb2_buf_mem_free(struct vb2_buffer *vb)
 	unsigned int plane;
 
 	for (plane = 0; plane < vb->num_planes; ++plane) {
-		call_void_memop(vb, put, vb->planes[plane].mem_priv);
-		vb->planes[plane].mem_priv = NULL;
+		struct vb2_plane *plane_ptr = &vb->planes[plane];
+
+		dev_cgroup_uncharge(plane_ptr->cgroup.pool,
+				    plane_ptr->cgroup.region,
+				    plane_ptr->cgroup.size);
+		call_void_memop(vb, put, plane_ptr->mem_priv);
+		plane_ptr->mem_priv = NULL;
 		dprintk(vb->vb2_queue, 3, "freed plane %d of buffer %d\n",
 			plane, vb->index);
 	}

@@ -188,6 +188,12 @@ struct vb2_plane {
 		int		fd;
 	} m;
 	unsigned int		data_offset;
+
+	struct {
+		struct dev_cgroup_pool_state *pool;
+		unsigned int region;
+		unsigned int size;
+	} cgroup;
 };
 
 /**

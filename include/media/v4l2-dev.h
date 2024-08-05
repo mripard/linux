@@ -14,6 +14,7 @@
 #include <linux/fs.h>
 #include <linux/device.h>
 #include <linux/cdev.h>
+#include <linux/cgroup_dev.h>
 #include <linux/mutex.h>
 #include <linux/videodev2.h>
 
@@ -266,6 +267,9 @@ struct video_device {
 	struct media_intf_devnode *intf_devnode;
 	struct media_pipeline pipe;
 #endif
+
+	struct dev_cgroup_device cgroup_device;
+
 	const struct v4l2_file_operations *fops;
 
 	u32 device_caps;

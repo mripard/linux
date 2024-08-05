@@ -892,6 +892,7 @@ int __video_register_device(struct video_device *vdev,
 	int minor_offset = 0;
 	int minor_cnt = VIDEO_NUM_DEVICES;
 	const char *name_base;
+	char cgroup_name[32];
 
 	/* A minor value of -1 marks this video device as never
 	   having been registered */
@@ -1031,6 +1032,17 @@ int __video_register_device(struct video_device *vdev,
 		pr_err("%s: cdev_add failed\n", __func__);
 		kfree(vdev->cdev);
 		vdev->cdev = NULL;
+		goto cleanup;
+	}
+
+	vdev->cgroup_device.regions[0].size = U64_MAX;
+	vdev->cgroup_device.regions[0].name = "main";
+	vdev->cgroup_device.num_regions++;
+
+	snprintf(cgroup_name, sizeof(cgroup_name), "v4l2/%s", dev_name(vdev->dev_parent));
+	ret = dev_cgroup_register_device(&vdev->cgroup_device, cgroup_name);
+	if (ret) {
+		pr_err("%s: Unable to register cgroup device.", __func__);
 		goto cleanup;
 	}
 
